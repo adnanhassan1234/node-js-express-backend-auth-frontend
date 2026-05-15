@@ -1,0 +1,83 @@
+# version: '3.8'
+# services:
+#   db:
+#     image: postgres:15
+#     container_name: nestjs_postgres_app
+#     restart: always
+#     environment:
+#       POSTGRES_USER: myuser
+#       POSTGRES_PASSWORD: mypassword
+#       POSTGRES_DB: mydatabase
+#     ports:
+#       - '5432:5432'
+#     volumes:
+#       - postgres_data:/var/lib/postgresql/data
+
+# volumes:
+#   postgres_data:
+# # DATABASE_URL=postgresql://myuser:mypassword@localhost:5432/mydatabase
+version: '3.9'
+
+services:
+  app:
+    build: .
+    container_name: nestjs_postgres_app
+    restart: always
+    command: npm run start:dev
+    ports:
+      - '3000:3000'
+    depends_on:
+      - postgres
+      - redis 
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: myuser
+      DB_PASSWORD: mypassword
+      DB_NAME: mydatabase
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    volumes:
+      - .:/app
+      - /app/node_modules
+
+  postgres:
+    image: postgres:15
+    container_name: nestjs_postgres_app_db
+    restart: always
+    environment:
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+      POSTGRES_DB: mydatabase
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: nestjs_redis
+    restart: always
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+
+  prisma-studio:
+    image: node:20
+    container_name: prisma_studio_container
+    working_dir: /app
+    depends_on:
+      - postgres
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      DATABASE_URL: postgresql://myuser:mypassword@postgres:5432/mydatabase
+    command: sh -c "npx prisma generate && npx prisma studio --port 51212"
+    ports:
+      - '51212:51212'
+
+volumes:
+  postgres_data:
+  redis_data:

@@ -1,0 +1,114 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model allproducts {
+  id          Int       @id @default(autoincrement())
+  title       String    @db.VarChar(255)
+  price       Float     @db.Float
+  description String?   @db.Text
+  createdAt   DateTime? @default(now()) @db.DateTime(0)
+}
+
+model auth_user {
+  id                  Int       @id @default(autoincrement())
+  name                String    @db.VarChar(100)
+  email               String    @unique(map: "email") @db.VarChar(150)
+  password            String    @db.VarChar(255)
+  verificationToken   String?   @db.VarChar(255)
+  emailVerified       Boolean?  @default(false)
+  refreshToken        String?   @db.VarChar(255)
+  resetPasswordToken  String?   @db.VarChar(255)
+  resetPasswordExpire DateTime? @db.DateTime(0)
+  created_at          DateTime? @default(now()) @db.Timestamp(0)
+  role                String?   @default("user") @db.VarChar(50)
+}
+
+model blog {
+  id        Int     @id @default(autoincrement())
+  title     String
+  content   String?
+  published Boolean @default(false)
+  authorId  Int
+  teacher   teacher @relation(fields: [authorId], references: [id], map: "Blog_authorId_fkey")
+
+  @@index([authorId], map: "Blog_authorId_fkey")
+}
+
+model orders {
+  id        Int      @id @default(autoincrement())
+  total     Float
+  createdAt DateTime @default(now())
+  productId Int
+  quantity  Int
+  status    String?  @default("pending") @db.VarChar(50)
+  updatedAt DateTime @default(now())
+  userId    Int
+  post      post[]
+}
+
+model post {
+  id        Int     @id @default(autoincrement())
+  title     String
+  content   String?
+  published Boolean @default(false)
+  orderId   Int
+  orders    orders  @relation(fields: [orderId], references: [id], map: "Post_orderId_fkey")
+
+  @@index([orderId], map: "Post_orderId_fkey")
+}
+
+model stuentnewuser {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique(map: "StuentNewUser_email_key")
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+}
+
+model teacher {
+  id    Int     @id @default(autoincrement())
+  email String  @unique(map: "Teacher_email_key")
+  name  String?
+  blog  blog[]
+}
+
+model adnan {
+  id      Int      @id @default(autoincrement())
+  email   String
+  profile profile?
+}
+
+model profile {
+  id     Int   @id @default(autoincrement())
+  userId Int   @unique
+  user   adnan @relation(fields: [userId], references: [id])
+}
+
+model student {
+  id            Int             @id @default(autoincrement())
+  name          String
+  studentcourse studentcourse[]
+}
+
+model course {
+  id            Int             @id @default(autoincrement())
+  title         String
+  studentcourse studentcourse[]
+}
+
+model studentcourse {
+  studentId Int
+  courseId  Int
+  course    course  @relation(fields: [courseId], references: [id], map: "studentCourse_courseId_fkey")
+  student   student @relation(fields: [studentId], references: [id], map: "studentCourse_studentId_fkey")
+
+  @@id([studentId, courseId])
+  @@index([courseId], map: "studentCourse_courseId_fkey")
+}

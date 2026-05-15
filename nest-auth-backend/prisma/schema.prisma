@@ -1,0 +1,33 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  Int       @id @default(autoincrement())
+  name                String
+  email               String    @unique
+  password            String
+  emailVerified       Boolean   @default(false)
+  role                String    @default("user")
+  verificationToken   String?
+  refreshToken        String?
+  resetPasswordToken  String?
+  resetPasswordExpire DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
+model Product {
+  id             Int      @id @default(autoincrement())
+  name           String
+  price          Float
+  category       String?
+  stock_quantity Int      @default(0)
+  createdAt      DateTime @default(now())
+}
