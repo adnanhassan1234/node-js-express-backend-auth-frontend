@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { RedisModule } from '@nestjs-modules/ioredis';
+import { EventsGateway } from './events/events.gateway';
 
 @Module({
   imports: [
@@ -25,6 +26,6 @@ import { RedisModule } from '@nestjs-modules/ioredis';
     }),
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, EventsGateway],
 })
 export class AppModule {}
