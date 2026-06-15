@@ -1,6 +1,3 @@
-import { loadStripe } from '@stripe/stripe-js';
-
-
 const Payment = () => {
   const handlePayment = async () => {
     const cartItems = [

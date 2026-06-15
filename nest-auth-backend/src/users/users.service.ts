@@ -45,4 +45,37 @@ export class UsersService {
 
     return users;
   }
+
+  // for single upload
+
+  // uploadFile(file: Express.Multer.File) {
+  //   return {
+  //     message: 'File uploaded successfully',
+  //     filename: file.filename,
+  //     path: file.path,
+  //     size: file.size,
+  //   };
+  // }
+
+  // for multiple upload files
+  uploadMultipleFiles(files: Express.Multer.File[], name: string) {
+    if (files.length === 0) {
+      return {
+        message: 'No files uploaded',
+      };
+    }
+    return {
+      message: 'Files uploaded successfully',
+      name,
+      files: files.map((file) => ({
+        filename: file.filename,
+        path: file.path,
+        size: file.size,
+      })),
+    };
+  }
+
+  async getAllFiles() {
+    return this.prismaService.user.findMany();
+  }
 }

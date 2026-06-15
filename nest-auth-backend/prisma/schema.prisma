@@ -15,6 +15,9 @@ model User {
   password            String
   emailVerified       Boolean   @default(false)
   role                String    @default("user")
+  phoneNumber         String?   @unique
+  otp                 String?
+  otpExpires          DateTime?
   verificationToken   String?
   refreshToken        String?
   resetPasswordToken  String?
@@ -30,4 +33,15 @@ model Product {
   category       String?
   stock_quantity Int      @default(0)
   createdAt      DateTime @default(now())
+}
+
+model Student {
+  id         Int      @id @default(autoincrement())
+  name       String
+  rollNo     String   @unique
+  age        Int
+  employeeId String   @unique
+  email      String   @unique
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }

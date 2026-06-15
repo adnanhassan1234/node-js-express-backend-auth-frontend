@@ -1,7 +1,11 @@
-// import { SupabaseAuthGuard } from './supabase-auth.guard';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
+import { SupabaseAuthGuard } from './supabase-auth.guard';
 
-// describe('SupabseAuthGuard', () => {
-//   it('should be defined', () => {
-//     expect(new SupabaseAuthGuard()).toBeDefined();
-//   });
-// });
+describe('SupabaseAuthGuard', () => {
+  it('should be defined', () => {
+    expect(
+      new SupabaseAuthGuard({} as ConfigService, {} as JwtService),
+    ).toBeDefined();
+  });
+});

@@ -7,12 +7,14 @@ import { UsersModule } from './users/users.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { RedisModule } from '@nestjs-modules/ioredis';
 import { EventsGateway } from './events/events.gateway';
+import { StudentModule } from './student/student.module';
 
 @Module({
   imports: [
     PrismaModule,
     AuthModule,
     UsersModule,
+    StudentModule,
     ConfigModule.forRoot({
       envFilePath: '.env',
       isGlobal: true,

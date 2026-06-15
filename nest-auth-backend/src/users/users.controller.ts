@@ -1,5 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Query,
+  UploadedFiles,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 import { RolesGuard } from 'src/role/roles.guard';
 import { AuthGuard } from '@nestjs/passport';
@@ -7,6 +16,8 @@ import { Roles } from 'src/role/roles.decorator';
 // import { AuthGuard } from '@nestjs/passport';
 // import { UseGuards } from '@nestjs/common';
 // import { SupabaseAuthGuard } from 'src/auth/supabse-auth/supabase-auth.guard';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import { multerOptions } from 'src/utils/multer.utils';
 
 // @UseGuards(SupabaseAuthGuard)
 // @UseGuards(AuthGuard('jwt'))
@@ -35,8 +46,42 @@ export class UsersController {
     };
   }
 
-  //   @Delete(':id')
-  //   remove(@Param('id') id: string) {
-  //     return this.authService.remove(+id);
-  //   }
+  // for single upload
+
+  // @Post('/uploads')
+  // @UseInterceptors(
+  //   FileInterceptor('file', {
+  //     storage: diskStorage({
+  //       destination: './uploads',
+
+  //       filename: (req, file, callback) => {
+  //         const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1e9);
+  //         callback(null, uniqueName + extname(file.originalname));
+  //       },
+  //     }),
+  //   }),
+  // )
+  // uploadFile(@UploadedFile() file: Express.Multer.File) {
+  //   return this.usersService.uploadFile(file);
+  // }
+
+  // for multiple upload files
+  @Post('uploads')
+  @UseInterceptors(FilesInterceptor('files', 10, multerOptions))
+  uploadMultipleFiles(
+    @UploadedFiles() files: Express.Multer.File[],
+    @Body('name') name: string,
+  ) {
+    return this.usersService.uploadMultipleFiles(files, name);
+  }
+
+  @Get('/all-files')
+  async getAllFiles() {
+    const data = await this.usersService.getAllFiles();
+    return {
+      success: true,
+      message: 'Record found successfully',
+      data,
+    };
+  }
 }
