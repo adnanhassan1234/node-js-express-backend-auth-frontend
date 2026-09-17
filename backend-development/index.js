@@ -162,6 +162,8 @@ const connectDB = require('./config/db');
 const stripePaymentController = require('./controller/stripePaymentController');
 const StudentRouter = require('./routes/studentRoutes');
 const AuthRouter = require('./routes/authRoutes');
+// XPORTYN Sales Tracker (saare endpoints /api/... par hain)
+const ContactRouter = require('./routes/contactRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -191,6 +193,16 @@ app.use('/swagger-api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 /* ================= ROUTES ================= */
 app.use(AuthRouter);
 app.use(StudentRouter);
+app.use(ContactRouter);
+
+/* ================= MULTER / UPLOAD ERROR HANDLER ================= */
+// File type ya size galat ho to JSON error mile (HTML error page nahi)
+app.use((err, req, res, next) => {
+  if (err) {
+    return res.status(400).json({ success: false, message: err.message });
+  }
+  next();
+});
 
 /* ================= DataBase ================= */
 connectDB();

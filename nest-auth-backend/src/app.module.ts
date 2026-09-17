@@ -8,6 +8,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { RedisModule } from '@nestjs-modules/ioredis';
 import { EventsGateway } from './events/events.gateway';
 import { StudentModule } from './student/student.module';
+import { SportsModule } from './sports/sports.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { StudentModule } from './student/student.module';
     AuthModule,
     UsersModule,
     StudentModule,
+    SportsModule,
     ConfigModule.forRoot({
       envFilePath: '.env',
       isGlobal: true,

@@ -45,3 +45,27 @@ model Student {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 }
+
+model Sports {
+  id             Int      @id @default(autoincrement())
+  playerName     String
+  jerseyNumber   String   @unique
+  sport          String
+  team           String?
+  position       String?
+  country        String?
+  age            Int
+  gender         String?
+  ranking        Int      @default(0)
+  points         Int      @default(0)
+  matchesPlayed  Int      @default(0)
+  wins           Int      @default(0)
+  losses         Int      @default(0)
+  email          String   @unique
+  phoneNumber    String?
+  status         String   @default("active")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("sports")
+}
