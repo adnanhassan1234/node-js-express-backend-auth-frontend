@@ -11,7 +11,7 @@ const AuthContext = createContext(null);
 // Sender details (templates ke [Your Name] / [Your Title] ke liye)
 const SENDER_KEY = 'xportyn_sender';
 
-const defaultSender = { name: 'Raja Ali', title: 'Sales Manager' };
+const defaultSender = { name: 'Adnan Hassan', title: 'Sales Manager' };
 
 export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY));

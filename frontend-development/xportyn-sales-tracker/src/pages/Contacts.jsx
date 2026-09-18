@@ -12,6 +12,7 @@ import Spinner from '../components/Spinner';
 import Pagination from '../components/Pagination';
 import ContactModal from '../components/ContactModal';
 import ImportModal from '../components/ImportModal';
+import AddContactModal from '../components/AddContactModal';
 
 /** Download ke teen options */
 const EXPORT_OPTIONS = [
@@ -57,6 +58,7 @@ const Contacts = () => {
 
   const [selectedId, setSelectedId] = useState(null);
   const [showImport, setShowImport] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [exporting, setExporting] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
@@ -320,6 +322,9 @@ const Contacts = () => {
 
           <button type="button" onClick={loadContacts} className="btn-secondary">
             🔄 Refresh
+          </button>
+          <button type="button" onClick={() => setShowAdd(true)} className="btn-primary">
+            ➕ Add Contact
           </button>
           <button type="button" onClick={() => setShowImport(true)} className="btn-primary">
             ⬆️ Import Excel/CSV
@@ -639,6 +644,17 @@ const Contacts = () => {
             setContacts((prev) => prev.map((c) => (c._id === updated._id ? updated : c)))
           }
           onDeleted={(id) => setContacts((prev) => prev.filter((c) => c._id !== id))}
+        />
+      )}
+
+      {showAdd && (
+        <AddContactModal
+          onClose={() => setShowAdd(false)}
+          onAdded={() => {
+            // Nayi entry list me aa jaye, aur city dropdown bhi update ho
+            loadContacts();
+            loadOptions();
+          }}
         />
       )}
 
