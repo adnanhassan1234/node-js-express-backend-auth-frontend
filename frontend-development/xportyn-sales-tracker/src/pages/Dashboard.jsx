@@ -14,7 +14,7 @@ import {
   YAxis,
 } from 'recharts';
 
-import { statsApi } from '../api/endpoints';
+import { statsApi, inboxApi } from '../api/endpoints';
 import { getErrorMessage } from '../api/client';
 import { CATEGORY_COLORS, styleForStatus } from '../utils/statusStyles';
 import { formatDate, daysFromToday } from '../utils/date';
@@ -47,6 +47,26 @@ const Dashboard = () => {
 
   useEffect(loadData, [loadData]);
 
+  /**
+   * Refresh sirf stats hi nahi -- mailbox bhi check karta hai, taake
+   * "New Replies" ka card yahin se update ho jaye.
+   */
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+
+    try {
+      const res = await inboxApi.checkReplies();
+      if (res.data.newReplies > 0) toast.success(res.data.message);
+    } catch (error) {
+      /* Mailbox check fail ho jaye to bhi stats refresh honi chahiyen */
+    } finally {
+      loadData();
+      setRefreshing(false);
+    }
+  };
+
   /** Card par click -> Contacts page par us status ka filter laga do */
   const goToContacts = (filters) => {
     const params = new URLSearchParams(filters).toString();
@@ -72,8 +92,13 @@ const Dashboard = () => {
           </p>
         </div>
 
-        <button type="button" onClick={loadData} className="btn-secondary">
-          🔄 Refresh
+        <button
+          type="button"
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="btn-secondary"
+        >
+          {refreshing ? 'Refresh ho raha hai...' : '🔄 Refresh'}
         </button>
       </div>
 
@@ -110,6 +135,14 @@ const Dashboard = () => {
           subtitle="Follow-up 1 + Follow-up 2"
           // Card dono statuses ginta hai — is liye filter bhi dono par lagta hai
           onClick={() => goToContacts({ status: 'Follow-up 1,Follow-up 2' })}
+        />
+        <StatCard
+          title="New Replies"
+          value={cards.newReplies || 0}
+          accent="green"
+          icon="🔔"
+          subtitle="Inbox se — bina parhe"
+          onClick={() => navigate('/replies')}
         />
         <StatCard
           title="Replied"
@@ -314,6 +347,7 @@ const Dashboard = () => {
           </div>
         )}
       </div>
+
 
       {/* Modal */}
       {selectedId && (

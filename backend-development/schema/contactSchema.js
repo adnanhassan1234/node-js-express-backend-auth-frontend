@@ -112,9 +112,42 @@ const contactSchema = new mongoose.Schema(
         subject: { type: String },
         to: { type: String },
         from: { type: String },
+        // Reply ko isi se pehchanta hai (reply me In-Reply-To me yehi aata hai)
+        messageId: { type: String },
         sentAt: { type: Date, default: Date.now },
       },
     ],
+
+    /**
+     * Client ke jawab (inbox se parh kar save hote hain).
+     * isAutoReply = out-of-office / automatic reply, asli jawab nahi.
+     */
+    replies: [
+      {
+        _id: false,
+        messageId: { type: String },
+        inReplyTo: { type: String },
+        from: { type: String },
+        fromName: { type: String },
+        subject: { type: String },
+        text: { type: String },
+        receivedAt: { type: Date, default: Date.now },
+        // Kis folder se mili (INBOX ya Spam) -- spam wali par nishan lagta hai
+        folder: { type: String },
+        fromSpam: { type: Boolean, default: false },
+        isAutoReply: { type: Boolean, default: false },
+        isRead: { type: Boolean, default: false },
+      },
+    ],
+
+    /**
+     * Jo replies user ne delete ki hain un ke Message-ID.
+     *
+     * Ye is liye zaroori hai: email to mailbox me mojood rehti hai, to agli
+     * dafa check karne par wohi reply dobara aa jati. Yahan yaad rakh kar
+     * usay dobara nahi daalte -- yani "delete" ka matlab "dobara mat dikhao".
+     */
+    dismissedReplyIds: [{ type: String }],
   },
   { timestamps: true } // createdAt / updatedAt automatic
 );

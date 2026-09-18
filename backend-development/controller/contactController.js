@@ -25,6 +25,7 @@ const {
   textToHtml,
 } = require('../config/mailer');
 const { saveToSentFolder, isSentSaveEnabled } = require('../config/imapSent');
+const { fetchRecentInbox, isInboxEnabled } = require('../config/imapInbox');
 
 /* ================================================================== */
 /*  HELPERS                                                            */
@@ -804,6 +805,15 @@ const getStats = async (req, res) => {
       nextFollowUpDate: { $ne: null, $lt: startOfToday },
     });
 
+    // Bina parhe replies (auto-reply shumar nahi hote)
+    const unreadReplyRows = await contactModel.aggregate([
+      { $unwind: '$replies' },
+      { $match: { 'replies.isRead': false, 'replies.isAutoReply': false } },
+      { $count: 'total' },
+    ]);
+
+    const newReplies = unreadReplyRows.length ? unreadReplyRows[0].total : 0;
+
     return res.status(200).json({
       success: true,
       data: {
@@ -821,6 +831,7 @@ const getStats = async (req, res) => {
           dealsClosed: statusCounts['Deal Closed'],
           noReply: statusCounts['No Reply'],
           overdue: overdueCount,
+          newReplies,
         },
 
         // Bar chart ke liye
@@ -1325,15 +1336,36 @@ const sendContactEmail = async (req, res) => {
      * Dobara banate to Message-ID aur Date alag ho jate, aur Sent wali copy
      * asal bheji hui email se mukhtalif hoti.
      */
+    /**
+     * Deliverability ke liye do faislay:
+     *
+     * 1) Default me SIRF plain text bhejte hain, HTML nahi.
+     *    Wajah: HTML wali cold email "marketing" lagti hai aur spam filters
+     *    usay zyada sakhti se dekhte hain. Hamare template me sirf lines aur
+     *    bullets hain -- plain text me bilkul waisi hi nazar aati hai, magar
+     *    "kisi bande ki likhi hui email" lagti hai. HTML chahiye to .env me
+     *    MAIL_HTML=true kar dein.
+     *
+     * 2) Reply-To sirf tab lagate hain jab wo From se alag ho. Dono ek jaise
+     *    hon to ye header faltu hai aur kuch filters isay shak se dekhte hain.
+     */
+    const useHtml = String(process.env.MAIL_HTML || "false") === "true";
+    const replyToAddress = process.env.MAIL_REPLY_TO || "";
+
     const mailOptions = {
       from: getFromAddress(),
       to: contact.email,
       bcc: getBccAddress() || undefined,
-      replyTo: getFromEmail(),
       subject: finalSubject,
       text: finalBody,
-      html: textToHtml(finalBody),
     };
+
+    if (useHtml) mailOptions.html = textToHtml(finalBody);
+
+    // Sirf tab jab wo From se waqai alag ho
+    if (replyToAddress && replyToAddress !== getFromEmail()) {
+      mailOptions.replyTo = replyToAddress;
+    }
 
     const rawMessage = await buildRawMessage(mailOptions);
 
@@ -1370,6 +1402,8 @@ const sendContactEmail = async (req, res) => {
       subject: finalSubject,
       to: contact.email,
       from: getFromEmail(),
+      // Reply match karne ke liye zaroori
+      messageId: info.messageId,
       sentAt,
     });
 
@@ -1417,6 +1451,261 @@ const testEmailConnection = async (req, res) => {
   }
 };
 
+/* ================================================================== */
+/*  14. CLIENT KE REPLIES (inbox se)                                   */
+/* ================================================================== */
+
+/**
+ * Inbox parh kar dekhta hai ke kis contact ne jawab diya.
+ *
+ * Match do tareeqon se hota hai:
+ *   1) Threading headers (In-Reply-To / References) -- sab se pakka, kyunke
+ *      reply me hamari bheji hui email ka Message-ID hota hai
+ *   2) Sender ka email address -- agar contact kisi aur address se jawab de
+ *      to ye kaam nahi karega, magar aam taur par theek chalta hai
+ *
+ * Status KHUD nahi badalta. Wajah: out-of-office aur auto-reply bhi inbox me
+ * aate hain. Hum unhe nishan laga kar alag rakhte hain aur faisla aap par
+ * chhorte hain -- ek click me "Replied" kar sakte hain.
+ */
+const checkReplies = async (req, res) => {
+  try {
+    if (!isInboxEnabled()) {
+      return res.status(503).json({
+        success: false,
+        message:
+          'Inbox parhne ka setup nahi hai. backend-development/.env me IMAP_HOST, ' +
+          'IMAP_PORT aur password set karein, phir backend restart karein.',
+      });
+    }
+
+    const result = await fetchRecentInbox({ days: req.query.days, limit: req.query.limit });
+
+    if (!result.ok) {
+      return res.status(400).json({ success: false, message: result.message });
+    }
+
+    // Wohi contacts jinka email hai ya jinhe hum ne email bheji hai
+    const contacts = await contactModel.find({
+      $or: [{ hasEmail: true }, { 'emailHistory.0': { $exists: true } }],
+    });
+
+    /* ---- Dhoondne ke liye lookup tables ---- */
+    const byEmail = new Map();
+    const bySentMessageId = new Map();
+    const seenReplyIds = new Map();
+
+    contacts.forEach((contact) => {
+      if (contact.email) byEmail.set(contact.email.toLowerCase(), contact);
+
+      (contact.emailHistory || []).forEach((item) => {
+        if (item.messageId) bySentMessageId.set(item.messageId, contact);
+      });
+
+      // Pehle se maujood replies + jo user ne delete ki thin -- dono skip hongi
+      seenReplyIds.set(
+        String(contact._id),
+        new Set(
+          (contact.replies || [])
+            .map((r) => r.messageId)
+            .concat(contact.dismissedReplyIds || [])
+            .filter(Boolean)
+        )
+      );
+    });
+
+    let matched = 0;
+    let added = 0;
+    let autoReplies = 0;
+    const touched = new Map();
+
+    for (const msg of result.messages) {
+      let contact = null;
+
+      // 1) Threading headers se
+      const refs = [msg.inReplyTo].concat(msg.references || []).filter(Boolean);
+
+      for (const ref of refs) {
+        if (bySentMessageId.has(ref)) {
+          contact = bySentMessageId.get(ref);
+          break;
+        }
+      }
+
+      // 2) Sender ke email se
+      if (!contact && msg.from) contact = byEmail.get(msg.from) || null;
+
+      if (!contact) continue;
+
+      matched += 1;
+
+      // Pehle se save ho chuki reply dobara na daalein
+      const seen = seenReplyIds.get(String(contact._id));
+      if (msg.messageId && seen.has(msg.messageId)) continue;
+
+      contact.replies.push({
+        messageId: msg.messageId,
+        inReplyTo: msg.inReplyTo,
+        from: msg.from,
+        fromName: msg.fromName,
+        subject: msg.subject,
+        text: String(msg.text || '').slice(0, 5000),
+        receivedAt: msg.receivedAt,
+        folder: msg.folder,
+        fromSpam: Boolean(msg.isSpamFolder),
+        isAutoReply: msg.isAutoReply,
+        isRead: false,
+      });
+
+      if (msg.messageId) seen.add(msg.messageId);
+      if (msg.isAutoReply) autoReplies += 1;
+
+      added += 1;
+      touched.set(String(contact._id), contact);
+    }
+
+    for (const contact of touched.values()) {
+      await contact.save();
+    }
+
+    return res.status(200).json({
+      success: true,
+      message:
+        added > 0
+          ? added + ' naye reply mile' + (autoReplies ? ' (' + autoReplies + ' auto-reply)' : '')
+          : 'Koi naya reply nahi',
+      scanned: result.messages.length,
+      folders: result.folders,
+      matched,
+      newReplies: added,
+      autoReplies,
+    });
+  } catch (error) {
+    return fail(res, error);
+  }
+};
+
+/** Jin contacts ne jawab diya un ki list (nayi reply sab se upar) */
+const getReplies = async (req, res) => {
+  try {
+    const unreadOnly = req.query.unreadOnly === 'true';
+    const includeAuto = req.query.includeAuto === 'true';
+
+    const contacts = await contactModel
+      .find({ 'replies.0': { $exists: true } })
+      .limit(300)
+      .lean();
+
+    const data = [];
+    let unreadCount = 0;
+
+    contacts.forEach((contact) => {
+      let replies = contact.replies || [];
+
+      if (!includeAuto) replies = replies.filter((r) => !r.isAutoReply);
+      if (unreadOnly) replies = replies.filter((r) => !r.isRead);
+
+      if (replies.length === 0) return;
+
+      unreadCount += replies.filter((r) => !r.isRead).length;
+
+      data.push({
+        _id: contact._id,
+        name: contact.name,
+        email: contact.email,
+        city: contact.city,
+        category: contact.category,
+        status: contact.status,
+        color: contact.color,
+        replies: replies
+          .slice()
+          .sort((a, b) => new Date(b.receivedAt) - new Date(a.receivedAt)),
+      });
+    });
+
+    // Jis ka jawab sab se naya hai wo sab se upar
+    data.sort((a, b) => new Date(b.replies[0].receivedAt) - new Date(a.replies[0].receivedAt));
+
+    return res.status(200).json({
+      success: true,
+      count: data.length,
+      unreadCount,
+      data,
+    });
+  } catch (error) {
+    return fail(res, error);
+  }
+};
+
+/** Kisi contact ke saare replies "parh liye" mark kar deta hai */
+const markRepliesRead = async (req, res) => {
+  try {
+    const contact = await contactModel.findById(req.params.id);
+
+    if (!contact) {
+      return res.status(404).json({ success: false, message: 'Contact not found' });
+    }
+
+    contact.replies.forEach((reply) => {
+      reply.isRead = true;
+    });
+
+    await contact.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Replies parh liye gaye',
+      data: contact,
+    });
+  } catch (error) {
+    return fail(res, error);
+  }
+};
+
+/**
+ * Reply(s) delete karta hai.
+ *
+ * body me messageId ho to sirf wohi, warna us contact ki saari replies.
+ * Message-ID yaad rakh liya jata hai taake agli check par dobara na aaye.
+ */
+const deleteReplies = async (req, res) => {
+  try {
+    const contact = await contactModel.findById(req.params.id);
+
+    if (!contact) {
+      return res.status(404).json({ success: false, message: 'Contact not found' });
+    }
+
+    const messageId = (req.body && req.body.messageId) || req.query.messageId;
+
+    const before = contact.replies.length;
+    const dismissed = new Set(contact.dismissedReplyIds || []);
+
+    if (messageId) {
+      contact.replies = contact.replies.filter((r) => r.messageId !== messageId);
+      dismissed.add(messageId);
+    } else {
+      contact.replies.forEach((r) => {
+        if (r.messageId) dismissed.add(r.messageId);
+      });
+      contact.replies = [];
+    }
+
+    contact.dismissedReplyIds = Array.from(dismissed);
+    await contact.save();
+
+    const removed = before - contact.replies.length;
+
+    return res.status(200).json({
+      success: true,
+      message: removed + ' reply delete ho gayi',
+      removed,
+      data: contact,
+    });
+  } catch (error) {
+    return fail(res, error);
+  }
+};
 module.exports = {
   getContacts,
   getContactById,
@@ -1434,4 +1723,8 @@ module.exports = {
   exportContacts,
   sendContactEmail,
   testEmailConnection,
+  checkReplies,
+  getReplies,
+  markRepliesRead,
+  deleteReplies,
 };

@@ -6,6 +6,7 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Contacts from './pages/Contacts';
+import Replies from './pages/Replies';
 import Templates from './pages/Templates';
 import Settings from './pages/Settings';
 
@@ -35,6 +36,14 @@ const App = () => (
       element={
         <Protected>
           <Contacts />
+        </Protected>
+      }
+    />
+    <Route
+      path="/replies"
+      element={
+        <Protected>
+          <Replies />
         </Protected>
       }
     />

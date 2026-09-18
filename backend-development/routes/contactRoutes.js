@@ -63,4 +63,17 @@ router.post('/api/contacts/:id/send-email', authMiddleware, contactController.se
 // SMTP settings theek hain ya nahi (email bheje baghair check)
 router.get('/api/email/test', authMiddleware, contactController.testEmailConnection);
 
+/* ------------------ CLIENT KE REPLIES ------------------- */
+// Inbox parh kar naye replies dhoondta hai
+router.post('/api/inbox/check-replies', authMiddleware, contactController.checkReplies);
+
+// Jin contacts ne jawab diya un ki list
+router.get('/api/inbox/replies', authMiddleware, contactController.getReplies);
+
+// Kisi contact ke replies 'parh liye' mark karna
+router.patch('/api/contacts/:id/replies/read', authMiddleware, contactController.markRepliesRead);
+
+// Reply delete (body me messageId ho to ek, warna saari)
+router.delete('/api/contacts/:id/replies', authMiddleware, contactController.deleteReplies);
+
 module.exports = router;

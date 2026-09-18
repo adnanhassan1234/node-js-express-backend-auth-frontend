@@ -82,6 +82,24 @@ export const statsApi = {
     client.get('/stats/upcoming-followups', { params: { days, limit } }),
 };
 
+/* ---------------------------- INBOX ----------------------------- */
+export const inboxApi = {
+  // POST /api/inbox/check-replies -- inbox parh kar naye replies dhoondta hai
+  checkReplies: () => client.post('/inbox/check-replies'),
+
+  // GET /api/inbox/replies?unreadOnly=&includeAuto=
+  replies: (params = {}) => client.get('/inbox/replies', { params }),
+
+  // PATCH /api/contacts/:id/replies/read
+  markRead: (id) => client.patch('/contacts/' + id + '/replies/read'),
+
+  // DELETE /api/contacts/:id/replies -- messageId de to sirf wohi, warna saari
+  deleteReply: (id, messageId) =>
+    client.delete('/contacts/' + id + '/replies', {
+      data: messageId ? { messageId } : {},
+    }),
+};
+
 /* -------------------------- TEMPLATES --------------------------- */
 export const templatesApi = {
   // GET /api/templates
