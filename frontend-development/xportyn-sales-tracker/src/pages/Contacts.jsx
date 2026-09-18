@@ -495,6 +495,7 @@ const Contacts = () => {
                         className="h-4 w-4 rounded border-slate-500 bg-slate-800 text-brand-500 focus:ring-brand-400"
                       />
                     </th>
+                    <th className="w-12 px-3 py-3 text-center font-semibold">#</th>
                     <th className="px-4 py-3 font-semibold">Name</th>
                     <th className="px-4 py-3 font-semibold">City</th>
                     <th className="px-4 py-3 font-semibold">Category</th>
@@ -509,7 +510,7 @@ const Contacts = () => {
 
                 {/* Rows ke beech ki line ab har cell ke border-b se aati hai */}
                 <tbody>
-                  {contacts.map((contact) => (
+                  {contacts.map((contact, index) => (
                     <tr
                       key={contact._id}
                       onClick={() => setSelectedId(contact._id)}
@@ -522,6 +523,11 @@ const Contacts = () => {
                           onChange={(e) => toggleSelect(e, contact._id)}
                           className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
                         />
+                      </td>
+
+                      {/* Serial number — pages ke aar paar chalta hai (page 2 par 26 se) */}
+                      <td className="px-3 py-3 text-center text-xs font-medium text-slate-400">
+                        {(page - 1) * perPage + index + 1}
                       </td>
 
                       <td className="max-w-[240px] px-4 py-3">
