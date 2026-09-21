@@ -26,7 +26,7 @@ const ImportModal = ({ onClose, onImported }) => {
 
     const ext = selected.name.split('.').pop().toLowerCase();
     if (!['xlsx', 'xls', 'csv'].includes(ext)) {
-      toast.error('Sirf .xlsx, .xls ya .csv file allowed hai');
+      toast.error('Only .xlsx, .xls and .csv files are allowed');
       return;
     }
 
@@ -36,7 +36,7 @@ const ImportModal = ({ onClose, onImported }) => {
 
   const handleUpload = async () => {
     if (!file) {
-      toast.error('Pehle file select karein');
+      toast.error('Please select a file first');
       return;
     }
 
@@ -56,7 +56,7 @@ const ImportModal = ({ onClose, onImported }) => {
     } catch (error) {
       // Backend 400 par bhi summary bhejta hai — dikhayein taake pata chale kya hua
       setSummary(error?.response?.data?.summary || null);
-      toast.error(getErrorMessage(error, 'Import fail ho gaya'));
+      toast.error(getErrorMessage(error, 'Import failed'));
     } finally {
       setUploading(false);
     }
@@ -69,7 +69,7 @@ const ImportModal = ({ onClose, onImported }) => {
         <div className="flex items-center justify-between border-b border-slate-200 p-5">
           <div>
             <h2 className="text-lg font-bold text-slate-900">Import Contacts</h2>
-            <p className="text-sm text-slate-500">Excel (.xlsx) ya CSV file upload karein</p>
+            <p className="text-sm text-slate-500">Upload an Excel (.xlsx) or CSV file</p>
           </div>
           <button
             type="button"
@@ -125,13 +125,13 @@ const ImportModal = ({ onClose, onImported }) => {
               <option value="">Auto-detect (sheet name / category column se)</option>
               {CATEGORIES.map((c) => (
                 <option key={c} value={c}>
-                  Sab kuch "{c}" me daal do
+                  Put everything under "{c}"
                 </option>
               ))}
             </select>
             <p className="mt-1 text-[11px] text-slate-500">
-              Auto-detect zyada tar theek kaam karta hai. Ye option tab use karein jab aap ek hi
-              category ki single sheet upload kar rahe hon.
+              Auto-detect works well in most cases. Use this option only when you are uploading a
+              single sheet that belongs to one category.
             </p>
           </div>
 
@@ -140,8 +140,8 @@ const ImportModal = ({ onClose, onImported }) => {
             <p className="mb-1 font-semibold text-slate-700">Expected columns:</p>
             <p>Name, City, Category, Address, Phone, Website, Email</p>
             <p className="mt-1 text-slate-500">
-              Column ka order maayne nahi rakhta. Jin rows me Name nahi hoga wo skip ho jayengi.
-              Duplicate emails apne aap skip ho jate hain.
+              Column order does not matter. Rows without a Name are skipped, and duplicate emails
+              are skipped automatically.
             </p>
           </div>
 
@@ -167,23 +167,31 @@ const ImportModal = ({ onClose, onImported }) => {
 
               <div className="grid grid-cols-3 gap-2 text-xs">
                 <div className="rounded bg-green-50 p-2">
-                  <p className="text-slate-500">Naye add hue</p>
+                  <p className="text-slate-500">Added</p>
                   <p className="text-lg font-bold text-green-700">{summary.inserted}</p>
                 </div>
                 <div className="rounded bg-blue-50 p-2">
-                  <p className="text-slate-500">Update hue</p>
+                  <p className="text-slate-500">Updated</p>
                   <p className="text-lg font-bold text-blue-700">{summary.updated || 0}</p>
                 </div>
                 <div className="rounded bg-amber-50 p-2">
-                  <p className="text-slate-500">Pehle se thay</p>
+                  <p className="text-slate-500">Already present</p>
                   <p className="text-lg font-bold text-amber-700">{summary.duplicates}</p>
                 </div>
               </div>
 
+              {summary.withSheetStatus > 0 && (
+                <p className="mt-2 rounded bg-green-50 p-2 text-xs text-green-800">
+                  {summary.withSheetStatus} rows took their status from the sheet (Email Sent,
+                  Follow-up and so on). Rows with a blank status are set to &quot;Not Contacted&quot;.
+                </p>
+              )}
+
               {summary.updated > 0 && (
                 <p className="mt-2 rounded bg-blue-50 p-2 text-xs text-blue-800">
-                  {summary.updated} purane contacts me khali fields (email/phone/website) bhar di
-                  gayin. Aapke status, notes aur dates bilkul waise hi hain.
+                  {summary.updated} existing contacts had their empty fields filled in. Contacts
+                  that were already at a status keep their status, notes and dates - the sheet never
+                  moves them backwards.
                 </p>
               )}
 

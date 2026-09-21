@@ -75,7 +75,7 @@ const ContactModal = ({ contactId, onClose, onSaved, onDeleted }) => {
         else if (loadedContact.status === 'Follow-up 1') setActiveTab('followUp2');
         else setActiveTab('initial');
       })
-      .catch((error) => toast.error(getErrorMessage(error, 'Contact load nahi hua')))
+      .catch((error) => toast.error(getErrorMessage(error, 'Could not load the contact')))
       .finally(() => !cancelled && setLoading(false));
 
     return () => {
@@ -104,15 +104,15 @@ const ContactModal = ({ contactId, onClose, onSaved, onDeleted }) => {
 
     try {
       await navigator.clipboard.writeText(text);
-      toast.success('Email clipboard par copy ho gayi');
+      toast.success('Email copied to clipboard');
     } catch {
-      toast.error('Copy nahi ho saka — text manually select karein');
+      toast.error('Could not copy - please select the text manually');
     }
   };
 
   const handleSendEmail = () => {
     if (!contact?.email) {
-      toast.error('Is contact ka email address maujood nahi hai');
+      toast.error('This contact has no email address');
       return;
     }
 
@@ -151,13 +151,13 @@ const ContactModal = ({ contactId, onClose, onSaved, onDeleted }) => {
    */
   const handleSendFromApp = async () => {
     if (!contact?.email) {
-      toast.error('Is contact ka email address nahi hai');
+      toast.error('This contact has no email address');
       return;
     }
 
     const label = TEMPLATE_TABS.find((t) => t.key === activeTab)?.label || 'Email';
 
-    if (!window.confirm(label + ' abhi bhej dein?\n\nTo: ' + contact.email)) return;
+    if (!window.confirm('Send ' + label + ' now?\n\nTo: ' + contact.email)) return;
 
     setSending(true);
 
@@ -172,7 +172,7 @@ const ContactModal = ({ contactId, onClose, onSaved, onDeleted }) => {
       onSaved?.(res.data.data);
       onClose();
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Email nahi bheji ja saki'));
+      toast.error(getErrorMessage(error, 'The email could not be sent'));
     } finally {
       setSending(false);
     }
@@ -191,26 +191,26 @@ const ContactModal = ({ contactId, onClose, onSaved, onDeleted }) => {
         email: form.email,
       });
 
-      toast.success('Contact update ho gaya');
+      toast.success('Contact updated');
       onSaved?.(res.data.data);
       onClose();
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Update fail ho gaya'));
+      toast.error(getErrorMessage(error, 'Update failed'));
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!window.confirm(`"${contact?.name}" ko delete kar dein?`)) return;
+    if (!window.confirm(`Delete "${contact?.name}"?`)) return;
 
     try {
       await contactsApi.remove(contactId);
-      toast.success('Contact delete ho gaya');
+      toast.success('Contact deleted');
       onDeleted?.(contactId);
       onClose();
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Delete fail ho gaya'));
+      toast.error(getErrorMessage(error, 'Delete failed'));
     }
   };
 
@@ -221,11 +221,11 @@ const ContactModal = ({ contactId, onClose, onSaved, onDeleted }) => {
       <div className="my-8 w-full max-w-5xl rounded-2xl bg-white shadow-2xl">
         {loading ? (
           <div className="p-12">
-            <Spinner size="lg" label="Contact load ho raha hai..." />
+            <Spinner size="lg" label="Loading contact..." />
           </div>
         ) : !contact ? (
           <div className="p-12 text-center">
-            <p className="text-slate-500">Contact nahi mila</p>
+            <p className="text-slate-500">Contact not found</p>
             <button type="button" onClick={onClose} className="btn-secondary mt-4">
               Close
             </button>
@@ -271,7 +271,7 @@ const ContactModal = ({ contactId, onClose, onSaved, onDeleted }) => {
                       <dt className="w-20 shrink-0 text-slate-500">Email</dt>
                       <dd className="min-w-0 break-all font-medium text-slate-800">
                         {contact.email || (
-                          <span className="text-amber-600">Koi email nahi</span>
+                          <span className="text-amber-600">No email</span>
                         )}
                       </dd>
                     </div>
@@ -352,8 +352,8 @@ const ContactModal = ({ contactId, onClose, onSaved, onDeleted }) => {
                   </div>
 
                   <p className="text-[11px] leading-relaxed text-slate-500">
-                    Status badalne par next follow-up date khud calculate hoti hai (Email Sent +4
-                    din, Follow-up 1 +7 din). Aap manually bhi change kar sakte hain.
+                    Changing the status recalculates the next follow-up date automatically (Email
+                    Sent +4 days, Follow-up 1 +7 days). You can also set it manually.
                   </p>
 
                   <div>
@@ -362,7 +362,7 @@ const ContactModal = ({ contactId, onClose, onSaved, onDeleted }) => {
                       type="text"
                       value={form.contactPerson}
                       onChange={(e) => setForm((p) => ({ ...p, contactPerson: e.target.value }))}
-                      placeholder="e.g. John Smith — template me [Contact Name] yahan se aata hai"
+                      placeholder="e.g. John Smith - this fills [Contact Name] in the templates"
                       className="input"
                     />
                   </div>
@@ -384,7 +384,7 @@ const ContactModal = ({ contactId, onClose, onSaved, onDeleted }) => {
                       rows={3}
                       value={form.notes}
                       onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
-                      placeholder="Call notes, kis se baat hui, etc."
+                      placeholder="Call notes, who you spoke to, and so on"
                       className="input resize-none"
                     />
                   </div>
@@ -425,7 +425,7 @@ const ContactModal = ({ contactId, onClose, onSaved, onDeleted }) => {
                       </span>
                     </span>
                     <span className="text-xs text-slate-400">
-                      {showHistory ? '▲ band karein' : '▼ dekhein'}
+                      {showHistory ? '▲ Hide' : '▼ Show'}
                     </span>
                   </button>
 
@@ -433,12 +433,12 @@ const ContactModal = ({ contactId, onClose, onSaved, onDeleted }) => {
                     <div className="border-t border-slate-200 p-4">
                       {emailHistory.length === 0 ? (
                         <p className="text-xs leading-relaxed text-slate-500">
-                          App se abhi tak koi email nahi bheji gayi.
+                          No emails have been sent from the app yet.
                           <br />
                           <span className="text-slate-400">
-                            "Send Now" se bhejenge to har email ka record yahan aa jayega. Mail
-                            app se bheji hui emails yahan nahi aatin — app ko un ka pata nahi
-                            chalta.
+                              Every email sent with &quot;Send Now&quot; is recorded here.
+                              Emails sent from your own mail app do not appear here — the app has
+                              no way of knowing about them.
                           </span>
                         </p>
                       ) : (
@@ -451,7 +451,7 @@ const ContactModal = ({ contactId, onClose, onSaved, onDeleted }) => {
                                     item.type}
                                 </p>
                                 <span className="shrink-0 text-[10px] font-semibold uppercase text-green-600">
-                                  bheji gayi
+                                  sent
                                 </span>
                               </div>
 
@@ -514,7 +514,7 @@ const ContactModal = ({ contactId, onClose, onSaved, onDeleted }) => {
                         <p className="text-sm font-medium text-slate-700">
                           {contact.email || (
                             <span className="text-amber-600">
-                              Email address maujood nahi — phone/website se contact karein
+                              No email address - reach out by phone or website
                             </span>
                           )}
                         </p>
@@ -558,8 +558,8 @@ const ContactModal = ({ contactId, onClose, onSaved, onDeleted }) => {
                         </div>
 
                         <p className="text-center text-[11px] text-slate-400">
-                          "Send Now" seedha aap ke Xportyn email se bhejta hai aur status khud
-                          update kar deta hai
+                          "Send Now" sends straight from your Xportyn email and updates the status
+                          for you
                         </p>
                       </div>
                     </>

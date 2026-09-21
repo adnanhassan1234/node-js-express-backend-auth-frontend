@@ -16,7 +16,7 @@ const Settings = () => {
   const handleSave = (e) => {
     e.preventDefault();
     setSender(form);
-    toast.success('Settings save ho gayin — templates update ho gaye');
+    toast.success('Settings saved - templates updated');
   };
 
   return (
@@ -24,7 +24,7 @@ const Settings = () => {
       <div>
         <h2 className="text-xl font-bold text-slate-900">Settings</h2>
         <p className="text-sm text-slate-500">
-          Email templates me aapka naam aur designation kaise show ho
+          How your name and job title appear in the email templates
         </p>
       </div>
 
@@ -78,15 +78,15 @@ ${form.title || '[Your Title]'}, Xportyn
             • <strong>Follow-up 1</strong> → next follow-up: last contact + <strong>7 din</strong>
           </li>
           <li>
-            • <strong>Follow-up 2</strong> → koi aur follow-up nahi
+            • <strong>Follow-up 2</strong> → no further follow-up
           </li>
           <li>
             • <strong>Replied / Deal Closed / No Reply</strong> → follow-up band
           </li>
         </ul>
         <p className="mt-3 text-xs text-slate-500">
-          Ye dates automatic set hoti hain, magar har contact ke modal me aap inhe manually bhi
-          change kar sakte hain.
+          These dates are set automatically, but you can change them by hand in any contact&apos;s
+          modal.
         </p>
       </div>
     </div>

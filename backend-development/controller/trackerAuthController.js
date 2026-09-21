@@ -24,21 +24,21 @@ const login = async (req, res) => {
     if (!username || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Username aur password dono required hain',
+        message: 'Both username and password are required',
       });
     }
 
     if (username !== ADMIN_USER || password !== ADMIN_PASS) {
       return res.status(401).json({
         success: false,
-        message: 'Ghalat username ya password',
+        message: 'Incorrect username or password',
       });
     }
 
     if (!process.env.JWT_SECRET) {
       return res.status(500).json({
         success: false,
-        message: 'JWT_SECRET .env me set nahi hai',
+        message: 'JWT_SECRET is not set in .env',
       });
     }
 

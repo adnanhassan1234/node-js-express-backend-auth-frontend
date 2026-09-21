@@ -44,12 +44,12 @@ const AddContactModal = ({ onClose, onAdded }) => {
     e.preventDefault();
 
     if (!form.name.trim()) {
-      toast.error('Organization ka naam zaroori hai');
+      toast.error('Organization name is required');
       return;
     }
 
     if (!form.category) {
-      toast.error('Category chunna zaroori hai');
+      toast.error('Please select a category');
       return;
     }
 
@@ -63,11 +63,11 @@ const AddContactModal = ({ onClose, onAdded }) => {
         city: form.city.trim(),
       });
 
-      toast.success(res.data.message || 'Contact add ho gaya');
+      toast.success(res.data.message || 'Contact added');
       onAdded?.(res.data.data);
       onClose();
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Contact add nahi hua'));
+      toast.error(getErrorMessage(error, 'Could not add the contact'));
     } finally {
       setSaving(false);
     }
@@ -82,9 +82,9 @@ const AddContactModal = ({ onClose, onAdded }) => {
         {/* -------- Header -------- */}
         <div className="flex items-center justify-between border-b border-slate-200 p-5">
           <div>
-            <h2 className="text-lg font-bold text-slate-900">Naya Contact Add Karein</h2>
+            <h2 className="text-lg font-bold text-slate-900">Add New Contact</h2>
             <p className="text-sm text-slate-500">
-              Sheet import kiye baghair ek ek kar ke contact daalein
+              Add contacts one at a time, without importing a sheet
             </p>
           </div>
 
@@ -223,14 +223,14 @@ const AddContactModal = ({ onClose, onAdded }) => {
               rows={2}
               value={form.notes}
               onChange={set('notes')}
-              placeholder="Koi bhi zaroori baat..."
+              placeholder="Anything worth noting..."
               className="input resize-none"
             />
           </div>
 
           <p className="sm:col-span-2 text-xs text-slate-500">
-            <span className="text-red-500">*</span> wale khane zaroori hain. Email na ho to bhi
-            contact add ho jayega — phone ya website se raabta kar sakte hain.
+            Fields marked <span className="text-red-500">*</span> are required. A contact can be
+            added without an email - you can still reach them by phone or website.
           </p>
         </div>
 
@@ -240,7 +240,7 @@ const AddContactModal = ({ onClose, onAdded }) => {
             Cancel
           </button>
           <button type="submit" disabled={saving} className="btn-primary flex-1">
-            {saving ? 'Save ho raha hai...' : 'Contact Add Karein'}
+            {saving ? 'Saving...' : 'Add Contact'}
           </button>
         </div>
       </form>

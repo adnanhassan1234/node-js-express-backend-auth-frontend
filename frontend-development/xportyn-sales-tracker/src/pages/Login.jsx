@@ -81,7 +81,7 @@ const Login = () => {
           <p className="text-center text-xs text-slate-500">
             Default credentials: <strong>admin</strong> / <strong>admin</strong>
             <br />
-            (backend <code>.env</code> me TRACKER_ADMIN_USER / TRACKER_ADMIN_PASS se change karein)
+            (change these via TRACKER_ADMIN_USER / TRACKER_ADMIN_PASS in the backend <code>.env</code>)
           </p>
         </form>
       </div>

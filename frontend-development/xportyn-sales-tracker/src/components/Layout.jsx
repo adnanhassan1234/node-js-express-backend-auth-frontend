@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import NotificationBell from './NotificationBell';
 
 /** Sidebar links */
 const NAV_ITEMS = [
@@ -97,6 +98,9 @@ const Layout = ({ children }) => {
             <h1 className="text-base font-bold text-slate-800">XPORTYN Sales Tracker</h1>
             <p className="text-xs text-slate-500">Outreach & follow-up management</p>
           </div>
+
+          {/* Nayi reply ki live khabar -- Socket.IO se aati hai */}
+          <NotificationBell />
 
           <div className="hidden items-center gap-2 sm:flex">
             <div className="h-8 w-8 rounded-full bg-brand-100 text-center text-sm font-bold leading-8 text-brand-700">

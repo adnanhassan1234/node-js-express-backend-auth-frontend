@@ -109,7 +109,7 @@ const readFolder = async (client, folder, since, limit) => {
   try {
     lock = await client.getMailboxLock(folder);
   } catch (e) {
-    return { messages, error: folder + ' nahi khul saka' };
+    return { messages, error: 'Could not open folder ' + folder };
   }
 
   try {
@@ -137,7 +137,7 @@ const readFolder = async (client, folder, since, limit) => {
         references: parsed.references ? [].concat(parsed.references) : [],
         from: String(sender.address || '').toLowerCase(),
         fromName: sender.name || '',
-        subject: parsed.subject || '(koi subject nahi)',
+        subject: parsed.subject || '(no subject)',
         text: cleanReplyText(parsed.text || ''),
         receivedAt: parsed.date || new Date(),
         isAutoReply: looksAutoReply(parsed),
@@ -158,7 +158,7 @@ const fetchRecentInbox = async (options = {}) => {
   if (!isInboxEnabled()) {
     return {
       ok: false,
-      message: 'Inbox parhne ka setup nahi hai. .env me IMAP_HOST aur password set karein.',
+      message: 'Inbox access is not configured. Set IMAP_HOST and the password in .env.',
       messages: [],
       folders: [],
     };
@@ -167,7 +167,7 @@ const fetchRecentInbox = async (options = {}) => {
   const config = getConfig();
 
   if (!config.user || !config.pass) {
-    return { ok: false, message: 'IMAP_USER / IMAP_PASS nahi mile', messages: [], folders: [] };
+    return { ok: false, message: 'IMAP_USER / IMAP_PASS are missing', messages: [], folders: [] };
   }
 
   const days = Number(options.days) || Number(process.env.INBOX_SCAN_DAYS) || 14;
@@ -206,7 +206,7 @@ const fetchRecentInbox = async (options = {}) => {
       ok: true,
       message:
         all.length +
-        ' emails parhi gayin (' +
+        ' emails read (' +
         scanned.map((s) => s.folder + ': ' + s.count).join(', ') +
         ')',
       messages: all,
@@ -221,7 +221,7 @@ const fetchRecentInbox = async (options = {}) => {
 
     return {
       ok: false,
-      message: 'Inbox nahi parh saka: ' + error.message,
+      message: 'Could not read the inbox: ' + error.message,
       messages: [],
       folders: [],
     };

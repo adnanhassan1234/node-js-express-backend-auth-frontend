@@ -53,7 +53,7 @@ client.interceptors.response.use(
 );
 
 /** Backend error message nikalne ka helper */
-export const getErrorMessage = (error, fallback = 'Kuch ghalat ho gaya') =>
+export const getErrorMessage = (error, fallback = 'Something went wrong') =>
   error?.response?.data?.message || error?.message || fallback;
 
 export default client;

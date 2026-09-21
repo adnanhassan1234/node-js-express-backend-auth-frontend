@@ -64,7 +64,7 @@ export const AuthProvider = ({ children }) => {
 
       return { success: true };
     } catch (error) {
-      return { success: false, message: getErrorMessage(error, 'Login fail ho gaya') };
+      return { success: false, message: getErrorMessage(error, 'Login failed') };
     }
   };
 
@@ -102,7 +102,7 @@ export const useAuth = () => {
   const context = useContext(AuthContext);
 
   if (!context) {
-    throw new Error('useAuth ko AuthProvider ke andar hi use karein');
+    throw new Error('useAuth must be used inside an AuthProvider');
   }
 
   return context;

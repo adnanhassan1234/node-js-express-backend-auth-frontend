@@ -10,6 +10,7 @@ const {
   colorForStatus,
   nextFollowUpFor,
   mapCategory,
+  normalizeStatus,
   addDays,
 } = require('../utils/trackerRules');
 const { TEMPLATES, FOLLOW_UPS, renderTemplate } = require('../utils/emailTemplates');
@@ -25,7 +26,7 @@ const {
   textToHtml,
 } = require('../config/mailer');
 const { saveToSentFolder, isSentSaveEnabled } = require('../config/imapSent');
-const { fetchRecentInbox, isInboxEnabled } = require('../config/imapInbox');
+const { scanForReplies } = require('../config/replyWatcher');
 
 /* ================================================================== */
 /*  HELPERS                                                            */
@@ -50,7 +51,21 @@ const COLUMN_ALIASES = {
   website: ['website', 'url', 'site', 'web'],
   email: ['email', 'emailaddress', 'mail', 'e mail'],
   notes: ['notes', 'note', 'remarks', 'comment', 'comments'],
+
+  // Ye teen sheet se aa sakte hain -- agar sheet me hon to wohi use hote hain
+  status: ['status', 'contactstatus', 'emailstatus', 'stage', 'state', 'progress'],
+  lastContactDate: [
+    'lastcontactdate', 'lastcontact', 'lastcontacted', 'lastcontacteddate',
+    'contactdate', 'datecontacted', 'emailsentdate', 'datesent', 'sentdate',
+  ],
+  nextFollowUpDate: [
+    'nextfollowupdate', 'nextfollowup', 'followupdate', 'followup',
+    'nextfollow', 'followupon', 'duedate',
+  ],
 };
+
+// In fields ki asal value chahiye (Date object), String me badalna nuqsan deta hai
+const RAW_VALUE_FIELDS = new Set(['lastContactDate', 'nextFollowUpDate']);
 
 /** Ek parsed row (array of cells) ko header row ke sath mila kar object banata hai */
 const rowToObject = (headerKeys, row) => {
@@ -64,12 +79,63 @@ const rowToObject = (headerKeys, row) => {
     // Har field ke aliases check karo
     Object.entries(COLUMN_ALIASES).forEach(([field, aliases]) => {
       if (aliases.includes(headerKey) && obj[field] === undefined) {
-        obj[field] = String(value).trim();
+        // Date cells ko String me badal dena unhe kharab kar deta hai
+        obj[field] = RAW_VALUE_FIELDS.has(field) ? value : String(value).trim();
       }
     });
   });
 
   return obj;
+};
+
+/**
+ * Sheet ki date cell ko JS Date me badalta hai.
+ *
+ * Teen soortein aati hain:
+ *   - Date object   (XLSX 'cellDates' se, aam taur par yehi)
+ *   - Excel serial  (number, jaise 45920 -- agar cell text formatted ho)
+ *   - String        ('2026-09-19', '9/19/2026')
+ *
+ * Samajh na aaye to null -- taake kachra date DB me na jaye.
+ */
+
+/** Sirf calendar din mayne rakhta hai, waqt nahi -- is liye UTC aadhi raat */
+const utcMidnight = (year, month, day) => new Date(Date.UTC(year, month, day));
+
+const parseSheetDate = (value) => {
+  if (value === undefined || value === null || value === '') return null;
+
+  // Excel serial number: 1899-12-30 se din (pehle se UTC me)
+  if (typeof value === 'number' && value > 0 && value < 100000) {
+    const d = new Date(Date.UTC(1899, 11, 30) + value * 86400000);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return null;
+
+    // Pehle se UTC aadhi raat hai to chhero mat
+    if (value.getUTCHours() === 0 && value.getUTCMinutes() === 0) return value;
+
+    return utcMidnight(value.getFullYear(), value.getMonth(), value.getDate());
+  }
+
+  const text = String(value).trim();
+  if (!text) return null;
+
+  // "2026-09-16" -- seedha adad se, taake timezone dakhal na de
+  const iso = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (iso) return utcMidnight(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+
+  const d = new Date(text);
+  if (Number.isNaN(d.getTime())) return null;
+
+  /**
+   * "9/16/2026" jaisi string LOCAL aadhi raat banti hai. Usay seedha rakh dein
+   * to UTC me badalte waqt din peechhe chala jata hai (16 -> 15). Is liye local
+   * din/mahina/saal le kar dobara UTC aadhi raat banate hain.
+   */
+  return utcMidnight(d.getFullYear(), d.getMonth(), d.getDate());
 };
 
 /**
@@ -249,14 +315,14 @@ const createContact = async (req, res) => {
     if (!payload.name || !payload.category) {
       return res.status(400).json({
         success: false,
-        message: 'Name aur category dono required hain',
+        message: 'Both name and category are required',
       });
     }
 
     if (!CATEGORIES.includes(payload.category)) {
       return res.status(400).json({
         success: false,
-        message: `Category in me se honi chahiye: ${CATEGORIES.join(', ')}`,
+        message: `Category must be one of: ${CATEGORIES.join(', ')}`,
       });
     }
 
@@ -279,7 +345,7 @@ const createContact = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: 'Contact add ho gaya',
+      message: 'Contact added',
       data: contact,
     });
   } catch (error) {
@@ -359,7 +425,7 @@ const updateContact = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Contact update ho gaya',
+      message: 'Contact updated',
       data: contact,
     });
   } catch (error) {
@@ -378,7 +444,7 @@ const updateContactStatus = async (req, res) => {
     if (!STATUSES.includes(status)) {
       return res.status(400).json({
         success: false,
-        message: `Status in me se hona chahiye: ${STATUSES.join(', ')}`,
+        message: `Status must be one of: ${STATUSES.join(', ')}`,
       });
     }
 
@@ -405,7 +471,7 @@ const updateContactStatus = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: `Status "${status}" set ho gaya`,
+      message: `Status set to "${status}"`,
       data: contact,
     });
   } catch (error) {
@@ -425,7 +491,7 @@ const deleteContact = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Contact not found' });
     }
 
-    return res.status(200).json({ success: true, message: 'Contact delete ho gaya' });
+    return res.status(200).json({ success: true, message: 'Contact deleted' });
   } catch (error) {
     return fail(res, error);
   }
@@ -436,7 +502,7 @@ const bulkDeleteContacts = async (req, res) => {
     const { ids } = req.body;
 
     if (!Array.isArray(ids) || ids.length === 0) {
-      return res.status(400).json({ success: false, message: 'ids array required hai' });
+      return res.status(400).json({ success: false, message: 'An "ids" array is required' });
     }
 
     const result = await contactModel.deleteMany({ _id: { $in: ids } });
@@ -460,7 +526,7 @@ const importContacts = async (req, res) => {
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        message: 'Koi file upload nahi hui. Field name "file" hona chahiye.',
+        message: 'No file was uploaded. The field name must be "file".',
       });
     }
 
@@ -482,6 +548,7 @@ const importContacts = async (req, res) => {
       duplicates: 0,
       skippedNoName: 0,
       skippedNoCategory: 0,
+      withSheetStatus: 0,
     };
 
     const toInsert = [];
@@ -495,7 +562,7 @@ const importContacts = async (req, res) => {
 
       // Jis sheet me proper headers nahi (jaise "Overview") usay skip kar do
       if (!header) {
-        summary.sheetsSkipped.push({ sheet: sheetName, reason: 'Koi valid header row nahi mili' });
+        summary.sheetsSkipped.push({ sheet: sheetName, reason: 'No valid header row found' });
         continue;
       }
 
@@ -527,6 +594,29 @@ const importContacts = async (req, res) => {
 
         const email = (raw.email || '').trim().toLowerCase();
 
+        /**
+         * Status aur dates: agar sheet me hain to WOHI chalti hain.
+         *
+         * Sheet khali ho ya samajh na aaye to hi "Not Contacted" lagta hai --
+         * kyunke import ka matlab sirf "list me aa gaya" hai.
+         */
+        const status = normalizeStatus(raw.status) || 'Not Contacted';
+        const isFresh = status === 'Not Contacted';
+
+        // "Not Contacted" par koi date nahi hoti -- baqi app me bhi yehi usool hai
+        const lastContactDate = isFresh ? null : parseSheetDate(raw.lastContactDate);
+
+        /**
+         * Follow-up date: sheet wali pehle. Na ho magar status active ho aur
+         * last contact maloom ho, to cadence se khud nikal lo.
+         */
+        let nextFollowUpDate = isFresh ? null : parseSheetDate(raw.nextFollowUpDate);
+        if (!nextFollowUpDate && !isFresh && lastContactDate) {
+          nextFollowUpDate = nextFollowUpFor(status, lastContactDate);
+        }
+
+        if (!isFresh) summary.withSheetStatus += 1;
+
         toInsert.push({
           name: raw.name,
           contactPerson: raw.contactPerson || '',
@@ -541,12 +631,10 @@ const importContacts = async (req, res) => {
           hasEmail: Boolean(email),
           notes: raw.notes || '',
 
-          // Import ka matlab sirf "list me aa gaya" hai — email abhi nahi bheji.
-          // Is liye status "Not Contacted", aur koi date set nahi hoti.
-          status: 'Not Contacted',
-          color: 'white',
-          lastContactDate: null,
-          nextFollowUpDate: null,
+          status,
+          color: colorForStatus(status),
+          lastContactDate,
+          nextFollowUpDate,
         });
 
         sheetInserted += 1;
@@ -558,7 +646,7 @@ const importContacts = async (req, res) => {
     if (toInsert.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'File me koi valid contact nahi mila. Columns check karein: Name, City, Category, Address, Phone, Website, Email',
+        message: 'No valid contacts found in the file. Check these columns: Name, City, Category, Address, Phone, Website, Email',
         summary,
       });
     }
@@ -574,13 +662,14 @@ const importContacts = async (req, res) => {
      * bhej de, to sirf email match karne se wo "naya" lagta aur duplicate ban jata.
      *
      * Match hone par hum sirf KHALI fields bharte hain (smart merge).
-     * Aapka kaam — status, notes, lastContactDate, nextFollowUpDate — kabhi
-     * overwrite nahi hota, aur jo field pehle se bhari hai usay haath nahi lagta.
+     * Jo field pehle se bhari hai usay haath nahi lagta. Status bhi tabhi lagta
+     * hai jab purana contact abhi "Not Contacted" ho — yani aap ki app ke andar
+     * ki gayi progress purani sheet se kabhi peechhe nahi jati.
      */
     const MERGEABLE_FIELDS = ['email', 'phone', 'website', 'address', 'contactPerson'];
 
     const existing = await contactModel
-      .find({}, 'email name city phone website address contactPerson')
+      .find({}, 'email name city phone website address contactPerson status lastContactDate nextFollowUpDate')
       .lean();
 
     const nameCityKeyOf = (name, city) =>
@@ -614,6 +703,26 @@ const importContacts = async (req, res) => {
         });
 
         if (fill.email) fill.hasEmail = true;
+
+        /**
+         * Status sirf tab lagta hai jab purana contact abhi tak "Not Contacted" ho.
+         *
+         * Yani sheet khali khana bhar sakti hai, magar aap ka kaam kabhi mita
+         * nahi sakti -- agar aap pehle hi "Replied" par pohanch chuke hain to
+         * purani sheet ka "Email Sent" usay peechhe nahi kheenchega.
+         */
+        const oldStatus = match.status || 'Not Contacted';
+
+        if (oldStatus === 'Not Contacted' && item.status !== 'Not Contacted') {
+          fill.status = item.status;
+          fill.color = colorForStatus(item.status);
+          if (item.lastContactDate) fill.lastContactDate = item.lastContactDate;
+          if (item.nextFollowUpDate) fill.nextFollowUpDate = item.nextFollowUpDate;
+        } else {
+          // Status wohi rehne do, sirf khali dates bhar do
+          if (!match.lastContactDate && item.lastContactDate) fill.lastContactDate = item.lastContactDate;
+          if (!match.nextFollowUpDate && item.nextFollowUpDate) fill.nextFollowUpDate = item.nextFollowUpDate;
+        }
 
         if (Object.keys(fill).length === 0) {
           // Bilkul wohi data — kuch karne ki zaroorat nahi
@@ -655,9 +764,9 @@ const importContacts = async (req, res) => {
     return res.status(201).json({
       success: true,
       message:
-        `${summary.inserted} naye contacts add hue` +
-        `, ${summary.updated} purane update hue` +
-        `, ${summary.duplicates} pehle se maujood thay`,
+        `${summary.inserted} contacts added` +
+        `, ${summary.updated} existing contacts updated` +
+        `, ${summary.duplicates} already present`,
       summary,
     });
   } catch (error) {
@@ -708,7 +817,7 @@ const getContactTemplate = async (req, res) => {
     if (!['initial', 'followUp1', 'followUp2'].includes(type)) {
       return res.status(400).json({
         success: false,
-        message: 'type initial | followUp1 | followUp2 me se hona chahiye',
+        message: 'type must be one of: initial | followUp1 | followUp2',
       });
     }
 
@@ -1270,7 +1379,7 @@ const exportContacts = async (req, res) => {
 
     return res.status(400).json({
       success: false,
-      message: 'format csv | xlsx | pdf me se hona chahiye',
+      message: 'format must be one of: csv | xlsx | pdf',
     });
   } catch (error) {
     return fail(res, error);
@@ -1298,7 +1407,7 @@ const sendContactEmail = async (req, res) => {
     if (!STATUS_AFTER_SEND[type]) {
       return res.status(400).json({
         success: false,
-        message: 'type initial | followUp1 | followUp2 me se hona chahiye',
+        message: 'type must be one of: initial | followUp1 | followUp2',
       });
     }
 
@@ -1315,7 +1424,7 @@ const sendContactEmail = async (req, res) => {
     if (!contact.email) {
       return res.status(400).json({
         success: false,
-        message: 'Is contact ka email address nahi hai — phone ya website se raabta karein',
+        message: 'This contact has no email address - reach out by phone or website instead',
       });
     }
 
@@ -1411,7 +1520,7 @@ const sendContactEmail = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Email bhej di gayi ' + contact.email + ' ko — status "' + newStatus + '" ho gaya',
+      message: 'Email sent to ' + contact.email + ' - status set to "' + newStatus + '"',
       messageId: info.messageId,
       savedToSent: sentSave.ok,
       sentFolder: sentSave.folder || null,
@@ -1422,14 +1531,14 @@ const sendContactEmail = async (req, res) => {
     console.error('[sendContactEmail]', error);
 
     // Nodemailer ke aam masail ko aasan zabaan me
-    let message = error.message || 'Email nahi bheji ja saki';
+    let message = error.message || 'The email could not be sent';
 
     if (error.code === 'EAUTH') {
       message =
-        'SMTP login fail hua. Gmail/Workspace par aam password nahi chalta — ' +
-        'App Password banana parta hai (2FA on hone ke baad).';
+        'SMTP login failed. Gmail/Workspace does not accept a normal password - ' +
+        'you need to create an App Password (after enabling 2FA).';
     } else if (error.code === 'ECONNECTION' || error.code === 'ETIMEDOUT') {
-      message = 'SMTP server se raabta nahi hua. SMTP_HOST aur SMTP_PORT check karein.';
+      message = 'Could not reach the SMTP server. Check SMTP_HOST and SMTP_PORT.';
     }
 
     return res.status(500).json({ success: false, message });
@@ -1470,115 +1579,35 @@ const testEmailConnection = async (req, res) => {
  */
 const checkReplies = async (req, res) => {
   try {
-    if (!isInboxEnabled()) {
-      return res.status(503).json({
-        success: false,
-        message:
-          'Inbox parhne ka setup nahi hai. backend-development/.env me IMAP_HOST, ' +
-          'IMAP_PORT aur password set karein, phir backend restart karein.',
-      });
-    }
-
-    const result = await fetchRecentInbox({ days: req.query.days, limit: req.query.limit });
+    /**
+     * Asal kaam config/replyWatcher.js me hai, taake khud-kar watcher aur
+     * ye button dono bilkul ek hi tareeqe se scan karein.
+     */
+    const result = await scanForReplies({ days: req.query.days, limit: req.query.limit });
 
     if (!result.ok) {
-      return res.status(400).json({ success: false, message: result.message });
+      const code = String(result.message).includes('not configured') ? 503 : 400;
+      return res.status(code).json({ success: false, message: result.message });
     }
 
-    // Wohi contacts jinka email hai ya jinhe hum ne email bheji hai
-    const contacts = await contactModel.find({
-      $or: [{ hasEmail: true }, { 'emailHistory.0': { $exists: true } }],
-    });
-
-    /* ---- Dhoondne ke liye lookup tables ---- */
-    const byEmail = new Map();
-    const bySentMessageId = new Map();
-    const seenReplyIds = new Map();
-
-    contacts.forEach((contact) => {
-      if (contact.email) byEmail.set(contact.email.toLowerCase(), contact);
-
-      (contact.emailHistory || []).forEach((item) => {
-        if (item.messageId) bySentMessageId.set(item.messageId, contact);
+    // Button se nayi reply mile to baaki khuli hui screens ko bhi bata do
+    const io = req.app.get('io');
+    if (io && result.newReplies > 0) {
+      io.emit('xportyn:new-replies', {
+        count: result.newReplies,
+        items: result.items,
+        at: new Date().toISOString(),
       });
-
-      // Pehle se maujood replies + jo user ne delete ki thin -- dono skip hongi
-      seenReplyIds.set(
-        String(contact._id),
-        new Set(
-          (contact.replies || [])
-            .map((r) => r.messageId)
-            .concat(contact.dismissedReplyIds || [])
-            .filter(Boolean)
-        )
-      );
-    });
-
-    let matched = 0;
-    let added = 0;
-    let autoReplies = 0;
-    const touched = new Map();
-
-    for (const msg of result.messages) {
-      let contact = null;
-
-      // 1) Threading headers se
-      const refs = [msg.inReplyTo].concat(msg.references || []).filter(Boolean);
-
-      for (const ref of refs) {
-        if (bySentMessageId.has(ref)) {
-          contact = bySentMessageId.get(ref);
-          break;
-        }
-      }
-
-      // 2) Sender ke email se
-      if (!contact && msg.from) contact = byEmail.get(msg.from) || null;
-
-      if (!contact) continue;
-
-      matched += 1;
-
-      // Pehle se save ho chuki reply dobara na daalein
-      const seen = seenReplyIds.get(String(contact._id));
-      if (msg.messageId && seen.has(msg.messageId)) continue;
-
-      contact.replies.push({
-        messageId: msg.messageId,
-        inReplyTo: msg.inReplyTo,
-        from: msg.from,
-        fromName: msg.fromName,
-        subject: msg.subject,
-        text: String(msg.text || '').slice(0, 5000),
-        receivedAt: msg.receivedAt,
-        folder: msg.folder,
-        fromSpam: Boolean(msg.isSpamFolder),
-        isAutoReply: msg.isAutoReply,
-        isRead: false,
-      });
-
-      if (msg.messageId) seen.add(msg.messageId);
-      if (msg.isAutoReply) autoReplies += 1;
-
-      added += 1;
-      touched.set(String(contact._id), contact);
-    }
-
-    for (const contact of touched.values()) {
-      await contact.save();
     }
 
     return res.status(200).json({
       success: true,
-      message:
-        added > 0
-          ? added + ' naye reply mile' + (autoReplies ? ' (' + autoReplies + ' auto-reply)' : '')
-          : 'Koi naya reply nahi',
-      scanned: result.messages.length,
+      message: result.message,
+      scanned: result.scanned,
       folders: result.folders,
-      matched,
-      newReplies: added,
-      autoReplies,
+      matched: result.matched,
+      newReplies: result.newReplies,
+      autoReplies: result.autoReplies,
     });
   } catch (error) {
     return fail(res, error);
@@ -1654,7 +1683,7 @@ const markRepliesRead = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Replies parh liye gaye',
+      message: 'Replies marked as read',
       data: contact,
     });
   } catch (error) {
@@ -1698,7 +1727,7 @@ const deleteReplies = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: removed + ' reply delete ho gayi',
+      message: removed + (removed === 1 ? ' reply deleted' : ' replies deleted'),
       removed,
       data: contact,
     });

@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
+import { NotificationProvider } from './context/NotificationContext';
 
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -13,7 +14,10 @@ import Settings from './pages/Settings';
 /** Protected page ko Layout ke andar wrap karne ka shortcut */
 const Protected = ({ children }) => (
   <ProtectedRoute>
-    <Layout>{children}</Layout>
+    {/* Socket sirf login ke baad jurta hai */}
+    <NotificationProvider>
+      <Layout>{children}</Layout>
+    </NotificationProvider>
   </ProtectedRoute>
 );
 

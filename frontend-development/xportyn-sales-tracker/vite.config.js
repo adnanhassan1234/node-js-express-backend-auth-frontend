@@ -17,6 +17,17 @@ export default defineConfig({
         target: 'http://localhost:3000',
         changeOrigin: true,
       },
+
+      /**
+       * Socket.IO bhi isi raaste se jata hai -- nayi reply ki khabar
+       * seedha server se aati hai, page refresh karne ki zaroorat nahi.
+       * `ws: true` zaroori hai warna sirf polling chalti hai.
+       */
+      '/socket.io': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        ws: true,
+      },
     },
   },
 });

@@ -165,6 +165,11 @@ const AuthRouter = require('./routes/authRoutes');
 // XPORTYN Sales Tracker (saare endpoints /api/... par hain)
 const ContactRouter = require('./routes/contactRoutes');
 
+const dns = require("dns");
+
+dns.setServers(["8.8.8.8", "8.8.4.4"]);
+console.log("RAW MONGO_URI:", JSON.stringify(process.env.MONGO_URI));
+
 const app = express();
 const server = http.createServer(app);
 
@@ -206,6 +211,17 @@ app.use((err, req, res, next) => {
 
 /* ================= DataBase ================= */
 connectDB();
+
+/* ============ XPORTYN REPLY NOTIFICATIONS ============ */
+/**
+ * Mailbox khud ba khud dekhta rehta hai aur nayi reply par Socket.IO par
+ * khabar bhejta hai -- dashboard par refresh karne ki zaroorat nahi rehti.
+ * Wakfa .env ki REPLY_WATCH_MINUTES se set hota hai (0 = band).
+ */
+const { startReplyWatcher } = require('./config/replyWatcher');
+
+app.set('io', io); // taake controller bhi khabar bhej sake
+startReplyWatcher(io);
 
 /* ================= SOCKET ================= */
 io.on('connection', (socket) => {

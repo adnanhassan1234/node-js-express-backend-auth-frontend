@@ -23,12 +23,12 @@ const Templates = () => {
     templatesApi
       .all()
       .then((res) => setData(res.data.data))
-      .catch((error) => toast.error(getErrorMessage(error, 'Templates load nahi hue')))
+      .catch((error) => toast.error(getErrorMessage(error, 'Could not load the templates')))
       .finally(() => setLoading(false));
   }, []);
 
   if (loading) return <Spinner size="lg" label="Loading templates..." />;
-  if (!data) return <p className="text-slate-500">Templates load nahi hue</p>;
+  if (!data) return <p className="text-slate-500">Templates could not be loaded</p>;
 
   // Initial + follow-up templates ko ek list me mila lete hain
   const allTemplates = {
@@ -61,9 +61,9 @@ const Templates = () => {
 
     try {
       await navigator.clipboard.writeText(text);
-      toast.success('Template copy ho gaya');
+      toast.success('Template copied');
     } catch {
-      toast.error('Copy nahi ho saka');
+      toast.error('Could not copy');
     }
   };
 
@@ -72,7 +72,7 @@ const Templates = () => {
       <div>
         <h2 className="text-xl font-bold text-slate-900">Email Templates</h2>
         <p className="text-sm text-slate-500">
-          Contact ke modal me ye templates apne aap us contact ke data se bhar jate hain
+          In a contact's modal these templates fill in automatically from that contact's details
         </p>
       </div>
 
@@ -112,7 +112,7 @@ const Templates = () => {
                 onChange={(e) => setShowFilled(e.target.checked)}
                 className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
               />
-              Example data ke sath dikhao
+              Show with example data
             </label>
 
             <button type="button" onClick={copy} className="btn-secondary">
@@ -136,8 +136,8 @@ const Templates = () => {
             ['[Organization Name]', 'Contact ka naam (organization)'],
             ['[City]', 'Contact ki city'],
             ['[Contact Name]', 'Contact person ka naam (na ho to "Team")'],
-            ['[Your Name]', `Settings se — abhi: ${sender.name}`],
-            ['[Your Title]', `Settings se — abhi: ${sender.title}`],
+            ['[Your Name]', `From Settings - currently: ${sender.name}`],
+            ['[Your Title]', `From Settings - currently: ${sender.title}`],
             ['[Original Subject]', 'Follow-up me pehli email ka subject'],
           ].map(([placeholder, description]) => (
             <div key={placeholder} className="rounded-lg bg-slate-50 p-3">

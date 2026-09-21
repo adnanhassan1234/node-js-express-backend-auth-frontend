@@ -19,7 +19,7 @@ const fileFilter = (req, file, cb) => {
     return cb(null, true);
   }
 
-  cb(new Error('Sirf .xlsx, .xls ya .csv files allowed hain'));
+  cb(new Error('Only .xlsx, .xls and .csv files are allowed'));
 };
 
 const uploadExcel = multer({

@@ -55,8 +55,8 @@ const isMailerReady = () => Boolean(process.env.SMTP_HOST);
 
 /** Setup adhoora ho to user ko saaf paighaam */
 const mailerSetupMessage = () =>
-  'Email bhejne ka setup mukammal nahi hai. backend-development/.env me SMTP_HOST, ' +
-  'SMTP_PORT, SMTP_USER, SMTP_PASS aur MAIL_FROM set karein, phir backend restart karein.';
+  'Email sending is not fully configured. Set SMTP_HOST, ' +
+  'SMTP_PORT, SMTP_USER, SMTP_PASS and MAIL_FROM in backend-development/.env, then restart the backend.';
 
 /**
  * "From" address banata hai.
@@ -96,7 +96,7 @@ const verifyConnection = async () => {
 
   try {
     await transporter.verify();
-    return { ok: true, message: 'SMTP connection theek hai. From: ' + getFromEmail() };
+    return { ok: true, message: 'SMTP connection is working. From: ' + getFromEmail() };
   } catch (error) {
     return { ok: false, message: 'SMTP connection fail: ' + error.message };
   }

@@ -61,13 +61,13 @@ const findSentFolder = async (client) => {
  */
 const saveToSentFolder = async (rawMessage) => {
   if (!isSentSaveEnabled()) {
-    return { ok: false, message: 'IMAP set nahi hai — Sent folder me copy nahi rakhi gayi' };
+    return { ok: false, message: 'IMAP is not configured - no copy was saved to the Sent folder' };
   }
 
   const config = getImapConfig();
 
   if (!config.user || !config.pass) {
-    return { ok: false, message: 'IMAP_USER / IMAP_PASS nahi mile' };
+    return { ok: false, message: 'IMAP_USER / IMAP_PASS are missing' };
   }
 
   const client = new ImapFlow({
@@ -90,7 +90,7 @@ const saveToSentFolder = async (rawMessage) => {
 
     await client.logout();
 
-    return { ok: true, folder, message: 'Copy "' + folder + '" me rakh di gayi' };
+    return { ok: true, folder, message: 'Copy saved to "' + folder + '"' };
   } catch (error) {
     try {
       await client.close();
@@ -98,7 +98,7 @@ const saveToSentFolder = async (rawMessage) => {
       /* ignore */
     }
 
-    return { ok: false, message: 'Sent folder me copy nahi rakhi ja saki: ' + error.message };
+    return { ok: false, message: 'Could not save a copy to the Sent folder: ' + error.message };
   }
 };
 

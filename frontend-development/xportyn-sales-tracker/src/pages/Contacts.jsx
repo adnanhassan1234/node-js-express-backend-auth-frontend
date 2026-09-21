@@ -16,7 +16,7 @@ import AddContactModal from '../components/AddContactModal';
 
 /** Download ke teen options */
 const EXPORT_OPTIONS = [
-  { format: 'csv', icon: '📄', label: 'CSV file', hint: 'Excel, Sheets — kahin bhi khul jati hai' },
+  { format: 'csv', icon: '📄', label: 'CSV file', hint: 'Opens in Excel, Sheets and almost anything else' },
   { format: 'xlsx', icon: '📊', label: 'Excel / Google Sheets', hint: 'Sheets me: File → Import → Upload' },
   { format: 'pdf', icon: '📕', label: 'PDF file', hint: 'Print ya share karne ke liye' },
 ];
@@ -108,7 +108,7 @@ const Contacts = () => {
         setMeta({ totalRecords: res.data.totalRecords, totalPages: res.data.totalPages });
         setSelectedIds([]);
       })
-      .catch((error) => toast.error(getErrorMessage(error, 'Contacts load nahi hue')))
+      .catch((error) => toast.error(getErrorMessage(error, 'Could not load contacts')))
       .finally(() => setLoading(false));
   }, [
     page,
@@ -181,9 +181,9 @@ const Contacts = () => {
 
       // Poori list dobara fetch karne ke bajaye sirf wohi row update kar dete hain
       setContacts((prev) => prev.map((c) => (c._id === contactId ? res.data.data : c)));
-      toast.success(`"${status}" set ho gaya`);
+      toast.success(`Status set to "${status}"`);
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Status update fail ho gaya'));
+      toast.error(getErrorMessage(error, 'Status update failed'));
     }
   };
 
@@ -234,23 +234,23 @@ const Contacts = () => {
       link.remove();
       URL.revokeObjectURL(url);
 
-      toast.success(format.toUpperCase() + ' download ho gayi');
+      toast.success(format.toUpperCase() + ' downloaded');
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Download fail ho gaya'));
+      toast.error(getErrorMessage(error, 'Download failed'));
     } finally {
       setExporting('');
     }
   };
 
   const handleBulkDelete = async () => {
-    if (!window.confirm(`${selectedIds.length} contacts delete kar dein?`)) return;
+    if (!window.confirm(`Delete ${selectedIds.length} contacts?`)) return;
 
     try {
       const res = await contactsApi.bulkRemove(selectedIds);
       toast.success(res.data.message);
       loadContacts();
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Delete fail ho gaya'));
+      toast.error(getErrorMessage(error, 'Delete failed'));
     }
   };
 
@@ -286,7 +286,7 @@ const Contacts = () => {
               disabled={Boolean(exporting) || meta.totalRecords === 0}
               className="btn-secondary"
             >
-              {exporting ? 'Ban rahi hai...' : '⬇️ Download'}
+              {exporting ? 'Preparing...' : '⬇️ Download'}
             </button>
 
             {exportOpen && (
@@ -313,7 +313,7 @@ const Contacts = () => {
                   ))}
 
                   <p className="bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
-                    Abhi ke filters ke mutabiq — <strong>{meta.totalRecords}</strong> contacts
+                    Matching the current filters — <strong>{meta.totalRecords}</strong> contacts
                   </p>
                 </div>
               </>
@@ -341,7 +341,7 @@ const Contacts = () => {
               type="text"
               value={filters.search}
               onChange={(e) => updateFilter('search', e.target.value)}
-              placeholder="Name, email ya city se search karein..."
+              placeholder="Search by name, email or city..."
               className="input"
             />
           </div>
@@ -435,8 +435,8 @@ const Contacts = () => {
 
 {/* 
           <p className="text-xs text-slate-500">
-            Upar wale status/category filters ke sath mil kar lagta hai. Sirf ek din chahiye to
-            dono khano me wohi date daal dein.
+            This works together with the status and category filters above. For a single day, put
+            the same date in both boxes.
           </p> */}
           {/* Dayen taraf — date wali isi line me */}
           <div className="ml-auto flex flex-wrap items-center gap-4 pb-1.5">
@@ -447,7 +447,7 @@ const Contacts = () => {
                 onChange={(e) => updateFilter('hasEmail', e.target.checked ? 'true' : 'All')}
                 className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
               />
-              Sirf email wale
+              With email only
             </label>
 
             {activeFilterCount > 0 && (
@@ -466,23 +466,23 @@ const Contacts = () => {
       {/* ---------------- Table ---------------- */}
       <div className="card overflow-hidden">
         {loading ? (
-          <Spinner size="lg" label="Contacts load ho rahe hain..." />
+          <Spinner size="lg" label="Loading contacts..." />
         ) : contacts.length === 0 ? (
           <div className="p-12 text-center">
             <p className="text-4xl">📭</p>
-            <p className="mt-2 font-semibold text-slate-700">Koi contact nahi mila</p>
+            <p className="mt-2 font-semibold text-slate-700">No contacts found</p>
             <p className="mt-1 text-sm text-slate-500">
               {activeFilterCount > 0
-                ? 'Filters change kar ke dekhein'
-                : 'Excel/CSV file import kar ke shuru karein'}
+                ? 'Try changing the filters'
+                : 'Import an Excel or CSV file to get started'}
             </p>
           </div>
         ) : (
           <>
             <div className="overflow-x-auto">
               {/*
-                Har cell par patli halki line (grid), aur header gehre rang me.
-                Header ka rang sidebar aur PDF/Excel export ke header se milta hai.
+                A light grid line on every cell, with a dark header.
+                The header colour matches the sidebar and the PDF/Excel export header.
               */}
               <table className="w-full text-sm [&_td]:border-b [&_td]:border-r [&_td]:border-slate-200/70 [&_td:last-child]:border-r-0">
                 <thead className="bg-slate-900 text-left text-xs uppercase tracking-wide text-slate-200 [&_th]:border-r [&_th]:border-white/10 [&_th:last-child]:border-r-0">

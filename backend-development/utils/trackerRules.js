@@ -106,6 +106,38 @@ const mapCategory = (rawValue) => {
   return null;
 };
 
+/**
+ * Sheet ki "Status" value ko hamare 7 statuses me map karta hai.
+ *
+ * Sheet me log kuch bhi likh dete hain -- "email sent", "EMAILSENT",
+ * "Follow up 1", "FU2", "closed" -- is liye sirf harf aur adad rakh kar
+ * milan karte hain. Na pehchana jaye to null (caller default laga lega).
+ */
+const STATUS_ALIASES = {
+  'Not Contacted': ['notcontacted', 'notcontact', 'new', 'pending', 'none', 'nil'],
+  'Email Sent': ['emailsent', 'sent', 'initialemailsent', 'initialemail', 'emailed', 'mailsent'],
+  'Follow-up 1': ['followup1', 'follow1', 'fu1', '1stfollowup', 'firstfollowup', 'followupone'],
+  'Follow-up 2': ['followup2', 'follow2', 'fu2', '2ndfollowup', 'secondfollowup', 'followuptwo'],
+  Replied: ['replied', 'reply', 'responded', 'response', 'answered'],
+  'Deal Closed': ['dealclosed', 'closed', 'won', 'dealwon', 'converted', 'sale'],
+  'No Reply': ['noreply', 'noresponse', 'noanswer', 'nothing', 'ignored'],
+};
+
+const normalizeStatus = (rawValue) => {
+  const value = String(rawValue || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (!value) return null;
+
+  // Pehle bilkul theek naam (jaise sheet me "Email Sent" likha ho)
+  const exact = STATUSES.find(
+    (s) => s.toLowerCase().replace(/[^a-z0-9]/g, '') === value
+  );
+  if (exact) return exact;
+
+  // Phir aliases
+  const found = Object.entries(STATUS_ALIASES).find(([, aliases]) => aliases.includes(value));
+  return found ? found[0] : null;
+};
+
 module.exports = {
   STATUSES,
   CATEGORIES,
@@ -116,4 +148,5 @@ module.exports = {
   colorForStatus,
   nextFollowUpFor,
   mapCategory,
+  normalizeStatus,
 };

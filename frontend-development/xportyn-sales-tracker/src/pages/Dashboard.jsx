@@ -41,7 +41,7 @@ const Dashboard = () => {
         setStats(statsRes.data.data);
         setFollowUps(followUpsRes.data.data);
       })
-      .catch((error) => toast.error(getErrorMessage(error, 'Dashboard load nahi hua')))
+      .catch((error) => toast.error(getErrorMessage(error, 'Could not load the dashboard')))
       .finally(() => setLoading(false));
   }, []);
 
@@ -73,8 +73,8 @@ const Dashboard = () => {
     navigate(`/contacts?${params}`);
   };
 
-  if (loading) return <Spinner size="lg" label="Dashboard load ho raha hai..." />;
-  if (!stats) return <p className="text-slate-500">Data load nahi hua</p>;
+  if (loading) return <Spinner size="lg" label="Loading dashboard..." />;
+  if (!stats) return <p className="text-slate-500">No data could be loaded</p>;
 
   const { cards, byStatus, byCategory, byCity } = stats;
 
@@ -88,7 +88,7 @@ const Dashboard = () => {
         <div>
           <h2 className="text-xl font-bold text-slate-900">Dashboard</h2>
           <p className="text-sm text-slate-500">
-            {stats.totalContacts} contacts · {stats.withEmail} ke paas email hai
+            {stats.totalContacts} contacts · {stats.withEmail} with an email address
           </p>
         </div>
 
@@ -98,7 +98,7 @@ const Dashboard = () => {
           disabled={refreshing}
           className="btn-secondary"
         >
-          {refreshing ? 'Refresh ho raha hai...' : '🔄 Refresh'}
+          {refreshing ? 'Refreshing...' : '🔄 Refresh'}
         </button>
       </div>
 
@@ -116,7 +116,7 @@ const Dashboard = () => {
           value={cards.notContacted}
           accent="slate"
           icon="📋"
-          subtitle="Abhi email nahi bheji"
+          subtitle="No email sent yet"
           onClick={() => goToContacts({ status: 'Not Contacted' })}
         />
         <StatCard
@@ -124,7 +124,7 @@ const Dashboard = () => {
           value={cards.emailsSent}
           accent="yellow"
           icon="✉️"
-          subtitle="Initial email bhej di"
+          subtitle="Initial email sent"
           onClick={() => goToContacts({ status: 'Email Sent' })}
         />
         <StatCard
@@ -141,7 +141,7 @@ const Dashboard = () => {
           value={cards.newReplies || 0}
           accent="green"
           icon="🔔"
-          subtitle="Inbox se — bina parhe"
+          subtitle="From your inbox — unread"
           onClick={() => navigate('/replies')}
         />
         <StatCard
@@ -170,14 +170,22 @@ const Dashboard = () => {
           value={cards.overdue}
           accent="red"
           icon="⏰"
-          subtitle="Date nikal chuki hai"
+          subtitle="Past their due date"
+        />
+        <StatCard
+          title="With Email"
+          value={stats.withEmail}
+          accent="brand"
+          icon="📧"
+          subtitle="Can be emailed from the app"
+          onClick={() => goToContacts({ hasEmail: 'true' })}
         />
         <StatCard
           title="Without Email"
           value={stats.withoutEmail}
           accent="slate"
           icon="📵"
-          subtitle="Phone/website se contact karein"
+          subtitle="Reach out by phone or website"
           onClick={() => goToContacts({ hasEmail: 'false' })}
         />
       </div>
@@ -219,7 +227,7 @@ const Dashboard = () => {
 
           <div className="h-72">
             {pieData.length === 0 ? (
-              <p className="pt-20 text-center text-sm text-slate-400">Abhi koi contact nahi hai</p>
+              <p className="pt-20 text-center text-sm text-slate-400">No contacts yet</p>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -277,7 +285,7 @@ const Dashboard = () => {
         <div className="flex items-center justify-between border-b border-slate-200 p-5">
           <div>
             <h3 className="text-sm font-bold text-slate-800">Upcoming Follow-ups</h3>
-            <p className="text-xs text-slate-500">Aaj se agle 2 din ke andar (overdue bhi shamil)</p>
+            <p className="text-xs text-slate-500">Due within the next 2 days (overdue included)</p>
           </div>
           <span className="rounded-full bg-brand-100 px-3 py-1 text-xs font-bold text-brand-700">
             {followUps.length}
@@ -286,7 +294,7 @@ const Dashboard = () => {
 
         {followUps.length === 0 ? (
           <p className="p-8 text-center text-sm text-slate-400">
-            🎉 Abhi koi follow-up due nahi hai
+            🎉 No follow-ups are due right now
           </p>
         ) : (
           <div className="overflow-x-auto">
@@ -335,7 +343,7 @@ const Dashboard = () => {
                           {days < 0
                             ? `${Math.abs(days)} din late`
                             : days === 0
-                              ? 'Aaj due hai'
+                              ? 'Due today'
                               : `${days} din baqi`}
                         </p>
                       </td>

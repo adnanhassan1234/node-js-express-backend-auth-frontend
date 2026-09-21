@@ -6,25 +6,36 @@ import { getErrorMessage } from '../api/client';
 import { formatDateTime } from '../utils/date';
 import StatusBadge from './StatusBadge';
 import Spinner from './Spinner';
+import { useNotifications } from '../context/NotificationContext';
 
 /**
  * Clients ke jawab — inbox se parh kar yahan dikhaye jate hain.
  *
- * Page khulte hi do kaam hote hain:
- *   1) Pehle se save shuda replies FAURAN dikh jate hain (tez)
- *   2) Peechhe peechhe mailbox check hota hai; naya reply mile to list khud
- *      update ho jati hai
+ * Page khulte hi save shuda replies FAURAN dikh jate hain, aur ek dafa
+ * (sirf ek dafa) peechhe peechhe mailbox bhi dekh liya jata hai.
  *
- * Is tarah button dabane ki zaroorat nahi rehti, magar page bhi ruka nahi rehta
- * (IMAP connection me kuch second lagte hain).
+ * Uske baad koi polling NAHI hoti. Backend khud mailbox dekhta rehta hai
+ * aur naya jawab milte hi Socket.IO par khabar bhejta hai — wo khabar
+ * NotificationContext se yahan pohanchti hai aur list khud taza ho jati hai.
  */
-const RepliesSection = ({ onOpenContact, onChanged }) => {
+const RepliesSection = ({ onOpenContact, onChanged, reloadSignal = 0 }) => {
+  // Socket se aane wali khabar — isi par list khud taza hoti hai
+  const { lastEventAt } = useNotifications();
+
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
   const [data, setData] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [expanded, setExpanded] = useState({});
-  const [showAuto, setShowAuto] = useState(false);
+  /**
+   * Auto-reply bhi shuru se dikhti hai.
+   *
+   * Pehle ye chhupi hoti thi, jis se aisa lagta tha ke reply aayi hi nahi.
+   * "Out of office" ya "we will get back to you" bhi kaam ki khabar hai --
+   * kam az kam ye pata chalta hai ke email pohanch gayi. Har aisi reply par
+   * AUTO ka nishan lagta hai, aur ye checkbox se band ki ja sakti hain.
+   */
+  const [showAuto, setShowAuto] = useState(true);
   const [lastChecked, setLastChecked] = useState(null);
 
   // React StrictMode development me effect do dafa chalata hai — ye us se bachata hai
@@ -61,17 +72,16 @@ const RepliesSection = ({ onOpenContact, onChanged }) => {
         }
 
         await load();
-        onChanged?.();
       } catch (error) {
-        if (!silent) toast.error(getErrorMessage(error, 'Inbox check nahi ho saka'));
+        if (!silent) toast.error(getErrorMessage(error, 'Could not check the inbox'));
       } finally {
         setChecking(false);
       }
     },
-    [load, onChanged]
+    [load]
   );
 
-  /* ---------- Page khulte hi ---------- */
+  /* ---------- Page khulte hi (sirf ek dafa) ---------- */
   useEffect(() => {
     let cancelled = false;
 
@@ -91,17 +101,36 @@ const RepliesSection = ({ onOpenContact, onChanged }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /**
+   * Socket se khabar aate hi list taza — na polling, na refresh.
+   *
+   * `lastEventAt` sirf tab badalta hai jab server waqai kuch bheje, is liye
+   * ye effect bekaar me nahi chalta.
+   */
+  useEffect(() => {
+    if (!lastEventAt) return;
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastEventAt]);
+
+  /* Parent (maslan contact modal) ne kuch badla ho to */
+  useEffect(() => {
+    if (!reloadSignal) return;
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reloadSignal]);
+
   /* ---------- Ek click me "Replied" ---------- */
   const markReplied = async (contact) => {
     try {
       await contactsApi.updateStatus(contact._id, 'Replied');
       await inboxApi.markRead(contact._id);
 
-      toast.success(contact.name + ' ab "Replied" hai');
+      toast.success(contact.name + ' is now marked "Replied"');
       await load();
       onChanged?.();
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Status update nahi hua'));
+      toast.error(getErrorMessage(error, 'Status update failed'));
     }
   };
 
@@ -111,7 +140,7 @@ const RepliesSection = ({ onOpenContact, onChanged }) => {
       await load();
       onChanged?.();
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Mark nahi ho saka'));
+      toast.error(getErrorMessage(error, 'Could not mark as read'));
     }
   };
 
@@ -121,11 +150,11 @@ const RepliesSection = ({ onOpenContact, onChanged }) => {
 
     try {
       await inboxApi.deleteReply(contact._id, reply.messageId);
-      toast.success('Reply hata di gayi');
+      toast.success('Reply deleted');
       await load();
       onChanged?.();
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Delete nahi hua'));
+      toast.error(getErrorMessage(error, 'Delete failed'));
     }
   };
 
@@ -138,7 +167,7 @@ const RepliesSection = ({ onOpenContact, onChanged }) => {
       await load();
       onChanged?.();
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Delete nahi hua'));
+      toast.error(getErrorMessage(error, 'Delete failed'));
     }
   };
 
@@ -153,16 +182,16 @@ const RepliesSection = ({ onOpenContact, onChanged }) => {
             💬 Clients ke Replies
             {unreadCount > 0 && (
               <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-bold text-green-700">
-                {unreadCount} naye
+                {unreadCount} unread
               </span>
             )}
           </h3>
           <p className="text-xs text-slate-500">
             {checking
-              ? 'Mailbox check ho raha hai...'
+              ? 'Checking the mailbox...'
               : lastChecked
                 ? 'Aakhri check: ' + formatDateTime(lastChecked)
-                : 'INBOX aur Spam dono parhe jate hain'}
+                : 'Both INBOX and Spam are checked'}
           </p>
         </div>
 
@@ -177,7 +206,7 @@ const RepliesSection = ({ onOpenContact, onChanged }) => {
               }}
               className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
             />
-            Auto-reply bhi dikhao
+            Show auto-replies
           </label>
 
           <button
@@ -186,22 +215,22 @@ const RepliesSection = ({ onOpenContact, onChanged }) => {
             disabled={checking}
             className="btn-primary"
           >
-            {checking ? 'Check ho raha hai...' : '🔄 Check Replies'}
+            {checking ? 'Checking...' : '🔄 Check Replies'}
           </button>
         </div>
       </div>
 
       {/* -------- List -------- */}
       {loading ? (
-        <Spinner label="Replies load ho rahe hain..." />
+        <Spinner label="Loading replies..." />
       ) : data.length === 0 ? (
         <div className="p-8 text-center">
           <p className="text-3xl">📭</p>
           <p className="mt-2 text-sm font-semibold text-slate-700">
-            {checking ? 'Mailbox check ho raha hai...' : 'Abhi koi reply nahi'}
+            {checking ? 'Checking the mailbox...' : 'No replies yet'}
           </p>
           <p className="mt-1 text-xs text-slate-500">
-            Page khulte hi mailbox khud check ho jata hai. Dobara dekhna ho to "Check Replies"
+            The mailbox is checked automatically when this page opens. To check again, press "Check Replies"
             dabayen.
           </p>
         </div>
@@ -242,7 +271,7 @@ const RepliesSection = ({ onOpenContact, onChanged }) => {
                     onClick={() => markRead(contact)}
                     className="rounded-md border border-slate-300 px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
                   >
-                    Parh liya
+                    Mark read
                   </button>
 
                   <button
@@ -250,7 +279,7 @@ const RepliesSection = ({ onOpenContact, onChanged }) => {
                     onClick={() => deleteAll(contact)}
                     className="rounded-md border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50"
                   >
-                    Sab hatayen
+                   All Remove
                   </button>
                 </div>
               </div>
@@ -260,7 +289,7 @@ const RepliesSection = ({ onOpenContact, onChanged }) => {
                 {contact.replies.map((reply, index) => {
                   const key = contact._id + '-' + index;
                   const isOpen = expanded[key];
-                  const text = reply.text || '(koi matn nahi)';
+                  const text = reply.text || '(no message body)';
                   const isLong = text.length > 260;
 
                   return (
@@ -286,7 +315,7 @@ const RepliesSection = ({ onOpenContact, onChanged }) => {
                           )}
                           {!reply.isRead && !reply.isAutoReply && (
                             <span className="ml-2 rounded bg-green-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                              NAYA
+                              NEW
                             </span>
                           )}
                         </p>
@@ -318,7 +347,7 @@ const RepliesSection = ({ onOpenContact, onChanged }) => {
                           onClick={() => toggle(key)}
                           className="mt-1 text-xs font-semibold text-brand-600 hover:underline"
                         >
-                          {isOpen ? 'Chhota karein' : 'Poora parhein'}
+                          {isOpen ? 'Show less' : 'Read full'}
                         </button>
                       )}
                     </li>
