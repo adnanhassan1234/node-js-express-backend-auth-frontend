@@ -77,9 +77,11 @@ export const statsApi = {
   // GET /api/stats/summary
   summary: () => client.get('/stats/summary'),
 
-  // GET /api/stats/upcoming-followups?days=2
-  upcomingFollowUps: (days = 2, limit = 50) =>
-    client.get('/stats/upcoming-followups', { params: { days, limit } }),
+  // GET /api/stats/upcoming-followups?days=2  (ya ?from=&to= date range ke liye)
+  upcomingFollowUps: (params = {}) =>
+    client.get('/stats/upcoming-followups', {
+      params: { days: 2, limit: 50, ...params },
+    }),
 };
 
 /* ---------------------------- INBOX ----------------------------- */

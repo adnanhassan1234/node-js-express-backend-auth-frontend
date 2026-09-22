@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
@@ -24,6 +24,15 @@ import StatusBadge from '../components/StatusBadge';
 import Spinner from '../components/Spinner';
 import ContactModal from '../components/ContactModal';
 
+/**
+ * Date range ko API params me badalta hai.
+ *
+ * null ka matlab default list: aaj se agle 2 din, aur pichhli saari overdue.
+ * Range chunne par limit barha dete hain -- user ne jaan boojh kar maanga hai.
+ */
+const followUpParams = (range) =>
+  range ? { from: range.from || undefined, to: range.to || undefined, limit: 200 } : {};
+
 /** Dashboard — stats cards, charts aur upcoming follow-ups */
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -33,17 +42,61 @@ const Dashboard = () => {
   const [followUps, setFollowUps] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
 
+  /* ---------- Follow-up date search ---------- */
+  const [fuFrom, setFuFrom] = useState('');
+  const [fuTo, setFuTo] = useState('');
+  const [fuLoading, setFuLoading] = useState(false);
+  const [filtered, setFiltered] = useState(false);
+
+  /**
+   * Jo range abhi lagi hui hai wo ref me rakhte hain, state me nahi --
+   * warna loadData har dafa naya ban jata aur effect chakkar me par jata.
+   */
+  const appliedRange = useRef(null);
+
+  const loadFollowUps = useCallback((range) => {
+    appliedRange.current = range;
+    setFuLoading(true);
+
+    return statsApi
+      .upcomingFollowUps(followUpParams(range))
+      .then((res) => {
+        setFollowUps(res.data.data);
+        setFiltered(Boolean(res.data.filtered));
+      })
+      .catch((error) => toast.error(getErrorMessage(error, 'Could not load follow-ups')))
+      .finally(() => setFuLoading(false));
+  }, []);
+
   const loadData = useCallback(() => {
     setLoading(true);
 
-    Promise.all([statsApi.summary(), statsApi.upcomingFollowUps(2, 50)])
+    // Refresh par jo date range lagi hui hai wohi barqarar rehti hai
+    Promise.all([statsApi.summary(), statsApi.upcomingFollowUps(followUpParams(appliedRange.current))])
       .then(([statsRes, followUpsRes]) => {
         setStats(statsRes.data.data);
         setFollowUps(followUpsRes.data.data);
+        setFiltered(Boolean(followUpsRes.data.filtered));
       })
       .catch((error) => toast.error(getErrorMessage(error, 'Could not load the dashboard')))
       .finally(() => setLoading(false));
   }, []);
+
+  /* Date search lagao */
+  const searchByDate = () => {
+    if (!fuFrom && !fuTo) {
+      toast.error('Pick at least one date');
+      return;
+    }
+    loadFollowUps({ from: fuFrom, to: fuTo });
+  };
+
+  /* Wapas default par (agle 2 din + overdue) */
+  const clearDateSearch = () => {
+    setFuFrom('');
+    setFuTo('');
+    loadFollowUps(null);
+  };
 
   useEffect(loadData, [loadData]);
 
@@ -282,19 +335,72 @@ const Dashboard = () => {
 
       {/* ---------------- Upcoming follow-ups ---------------- */}
       <div className="card">
-        <div className="flex items-center justify-between border-b border-slate-200 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-5">
           <div>
             <h3 className="text-sm font-bold text-slate-800">Upcoming Follow-ups</h3>
-            <p className="text-xs text-slate-500">Due within the next 2 days (overdue included)</p>
+            <p className="text-xs text-slate-500">
+              {filtered
+                ? 'Showing the follow-up dates you picked'
+                : 'Due within the next 2 days (overdue included)'}
+            </p>
           </div>
-          <span className="rounded-full bg-brand-100 px-3 py-1 text-xs font-bold text-brand-700">
-            {followUps.length}
-          </span>
+
+          {/* ---- Follow-up date search ---- */}
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="date"
+              value={fuFrom}
+              max={fuTo || undefined}
+              onChange={(e) => setFuFrom(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && searchByDate()}
+              aria-label="Follow-up date from"
+              className="input w-[9.5rem] py-1.5 text-xs"
+            />
+
+            <span className="text-xs text-slate-400">to</span>
+
+            <input
+              type="date"
+              value={fuTo}
+              min={fuFrom || undefined}
+              onChange={(e) => setFuTo(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && searchByDate()}
+              aria-label="Follow-up date to"
+              className="input w-[9.5rem] py-1.5 text-xs"
+            />
+
+            <button
+              type="button"
+              onClick={searchByDate}
+              disabled={fuLoading}
+              className="btn-primary py-1.5 text-xs"
+            >
+              {fuLoading ? 'Searching...' : '🔍 Search'}
+            </button>
+
+            {filtered && (
+              <button
+                type="button"
+                onClick={clearDateSearch}
+                className="text-xs font-medium text-slate-500 underline-offset-2 hover:text-red-600 hover:underline"
+              >
+                Clear
+              </button>
+            )}
+
+            <span className="rounded-full bg-brand-100 px-3 py-1 text-xs font-bold text-brand-700">
+              {followUps.length}
+            </span>
+          </div>
         </div>
 
         {followUps.length === 0 ? (
           <p className="p-8 text-center text-sm text-slate-400">
-            🎉 No follow-ups are due right now
+            {fuLoading
+              ? 'Loading...'
+              : filtered
+                ? 'No follow-ups fall in this date range'
+                : '🎉 No follow-ups are due right now'}
           </p>
         ) : (
           <div className="overflow-x-auto">

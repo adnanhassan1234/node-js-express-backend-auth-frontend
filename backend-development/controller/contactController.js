@@ -974,14 +974,53 @@ const getStats = async (req, res) => {
 
 const getUpcomingFollowUps = async (req, res) => {
   try {
-    const days = parseInt(req.query.days, 10) || 2;
+    const { from, to } = req.query;
 
-    // Aaj se "days" din aage tak ki saari follow-ups (overdue bhi shamil)
-    const until = addDays(new Date(), days);
-    until.setHours(23, 59, 59, 999);
+    const query = { nextFollowUpDate: { $ne: null } };
+
+    /**
+     * Do tareeqe se list banti hai:
+     *
+     *  1. Date range (from / to)  -- jab user dashboard par date chunta hai.
+     *     Sirf usi range ki follow-ups aati hain, kuch aur nahi.
+     *
+     *  2. Warna default: aaj se "days" din aage tak, aur pichhli saari
+     *     overdue bhi -- taake koi chhoot na jaye.
+     *
+     * Waqt ka hisaab wohi hai jo Contacts page ke date filter me hai:
+     * "from" wale din ki subah 00:00 se, "to" wale din ki raat 23:59 tak.
+     */
+    if (from || to) {
+      const range = { $ne: null };
+
+      if (from) {
+        const f = new Date(from);
+        if (!Number.isNaN(f.getTime())) {
+          f.setHours(0, 0, 0, 0);
+          range.$gte = f;
+        }
+      }
+
+      if (to) {
+        const t = new Date(to);
+        if (!Number.isNaN(t.getTime())) {
+          t.setHours(23, 59, 59, 999);
+          range.$lte = t;
+        }
+      }
+
+      query.nextFollowUpDate = range;
+    } else {
+      const days = parseInt(req.query.days, 10) || 2;
+
+      const until = addDays(new Date(), days);
+      until.setHours(23, 59, 59, 999);
+
+      query.nextFollowUpDate = { $ne: null, $lte: until };
+    }
 
     const contacts = await contactModel
-      .find({ nextFollowUpDate: { $ne: null, $lte: until } })
+      .find(query)
       .sort({ nextFollowUpDate: 1 })
       .limit(parseInt(req.query.limit, 10) || 50);
 
@@ -997,6 +1036,7 @@ const getUpcomingFollowUps = async (req, res) => {
     return res.status(200).json({
       success: true,
       count: data.length,
+      filtered: Boolean(from || to),
       data,
     });
   } catch (error) {
