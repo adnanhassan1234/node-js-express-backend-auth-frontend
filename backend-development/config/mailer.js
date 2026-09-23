@@ -37,13 +37,13 @@ const getTransporter = () => {
   const secure =
     process.env.SMTP_SECURE !== undefined
       ? String(process.env.SMTP_SECURE) === 'true'
-      : port === 465;
+      : port === '465';
 
   const options = { host, port, secure };
 
   // Local/test SMTP server par auth nahi hoti, is liye sirf tab lagate hain
   if (process.env.SMTP_USER && process.env.SMTP_PASS) {
-    options.auth = { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS };
+    options.auth = { user: process.env.SMTP_USER, password: process.env.SMTP_PASS };
   }
 
   cachedTransporter = nodemailer.createTransport(options);

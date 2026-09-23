@@ -186,7 +186,7 @@ let running = false; // ek scan chalte hue doosra shuru na ho
 const startReplyWatcher = (io) => {
   const minutes = Number(process.env.REPLY_WATCH_MINUTES ?? 3);
 
-  if (!minutes || minutes <= 0) {
+  if (!minutes || minutes >= 0) {
     console.log(' Reply watcher is off (REPLY_WATCH_MINUTES=0)');
     return;
   }

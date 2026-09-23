@@ -19,10 +19,28 @@ import { getErrorMessage } from '../api/client';
 import { CATEGORY_COLORS, styleForStatus } from '../utils/statusStyles';
 import { formatDate, daysFromToday } from '../utils/date';
 
+import {
+  LuAlarmClock,
+  LuBellOff,
+  LuBellRing,
+  LuClipboardList,
+  LuHandshake,
+  LuMail,
+  LuMailX,
+  LuTarget,
+  LuMessageCircle,
+  LuRepeat,
+  LuRefreshCw,
+  LuSearch,
+  LuSend,
+  LuUsers,
+} from 'react-icons/lu';
+
 import StatCard from '../components/StatCard';
 import StatusBadge from '../components/StatusBadge';
 import Spinner from '../components/Spinner';
 import ContactModal from '../components/ContactModal';
+import Pagination from '../components/Pagination';
 
 /**
  * Date range ko API params me badalta hai.
@@ -30,8 +48,24 @@ import ContactModal from '../components/ContactModal';
  * null ka matlab default list: aaj se agle 2 din, aur pichhli saari overdue.
  * Range chunne par limit barha dete hain -- user ne jaan boojh kar maanga hai.
  */
-const followUpParams = (range) =>
-  range ? { from: range.from || undefined, to: range.to || undefined, limit: 200 } : {};
+/**
+ * "Ready to Email" ka rang number ke hisaab se badalta hai.
+ *
+ * Is card ka matlab ulta hai: number ZYADA hona achhi baat hai (kaam mojood),
+ * aur KAM hona khatra (outreach rukne wala hai). Ek tay-shuda rang ye farq
+ * nahi bata sakta -- green me "0" dekh kar lagta hai sab theek hai.
+ */
+const readyAccent = (n) => {
+  if (!n) return 'red';           // 0 -- bhejne ko kuch nahi bacha
+  if (n < 10) return 'orange';    // khatam hone ko hai
+  return 'green';                 // kaafi kaam mojood hai
+};
+
+const followUpParams = (range, page = 1, perPage = 10) => ({
+  page,
+  limit: perPage,
+  ...(range ? { from: range.from || undefined, to: range.to || undefined } : {}),
+});
 
 /** Dashboard — stats cards, charts aur upcoming follow-ups */
 const Dashboard = () => {
@@ -48,21 +82,34 @@ const Dashboard = () => {
   const [fuLoading, setFuLoading] = useState(false);
   const [filtered, setFiltered] = useState(false);
 
+  /* ---------- Pagination ---------- */
+  const [fuPage, setFuPage] = useState(1);
+  const [fuPerPage, setFuPerPage] = useState(10);
+  const [fuMeta, setFuMeta] = useState({ totalRecords: 0, totalPages: 1 });
+
   /**
    * Jo range abhi lagi hui hai wo ref me rakhte hain, state me nahi --
    * warna loadData har dafa naya ban jata aur effect chakkar me par jata.
    */
   const appliedRange = useRef(null);
+  const fuPageRef = useRef(1);
+  const fuPerPageRef = useRef(10);
 
-  const loadFollowUps = useCallback((range) => {
+  const loadFollowUps = useCallback((range, page = 1, perPage = 10) => {
     appliedRange.current = range;
+    fuPageRef.current = page;
+    fuPerPageRef.current = perPage;
+
+    setFuPage(page);
+    setFuPerPage(perPage);
     setFuLoading(true);
 
     return statsApi
-      .upcomingFollowUps(followUpParams(range))
+      .upcomingFollowUps(followUpParams(range, page, perPage))
       .then((res) => {
         setFollowUps(res.data.data);
         setFiltered(Boolean(res.data.filtered));
+        setFuMeta({ totalRecords: res.data.totalRecords, totalPages: res.data.totalPages });
       })
       .catch((error) => toast.error(getErrorMessage(error, 'Could not load follow-ups')))
       .finally(() => setFuLoading(false));
@@ -72,11 +119,20 @@ const Dashboard = () => {
     setLoading(true);
 
     // Refresh par jo date range lagi hui hai wohi barqarar rehti hai
-    Promise.all([statsApi.summary(), statsApi.upcomingFollowUps(followUpParams(appliedRange.current))])
+    Promise.all([
+      statsApi.summary(),
+      statsApi.upcomingFollowUps(
+        followUpParams(appliedRange.current, fuPageRef.current, fuPerPageRef.current)
+      ),
+    ])
       .then(([statsRes, followUpsRes]) => {
         setStats(statsRes.data.data);
         setFollowUps(followUpsRes.data.data);
         setFiltered(Boolean(followUpsRes.data.filtered));
+        setFuMeta({
+          totalRecords: followUpsRes.data.totalRecords,
+          totalPages: followUpsRes.data.totalPages,
+        });
       })
       .catch((error) => toast.error(getErrorMessage(error, 'Could not load the dashboard')))
       .finally(() => setLoading(false));
@@ -88,14 +144,15 @@ const Dashboard = () => {
       toast.error('Pick at least one date');
       return;
     }
-    loadFollowUps({ from: fuFrom, to: fuTo });
+    // Nayi search hamesha pehle page se shuru
+    loadFollowUps({ from: fuFrom, to: fuTo }, 1, fuPerPage);
   };
 
   /* Wapas default par (agle 2 din + overdue) */
   const clearDateSearch = () => {
     setFuFrom('');
     setFuTo('');
-    loadFollowUps(null);
+    loadFollowUps(null, 1, fuPerPage);
   };
 
   useEffect(loadData, [loadData]);
@@ -151,7 +208,9 @@ const Dashboard = () => {
           disabled={refreshing}
           className="btn-secondary"
         >
-          {refreshing ? 'Refreshing...' : '🔄 Refresh'}
+          {/* Icon ghoomta hai jab refresh chal raha ho */}
+          <LuRefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} aria-hidden="true" />
+          {refreshing ? 'Refreshing...' : 'Refresh'}
         </button>
       </div>
 
@@ -161,22 +220,30 @@ const Dashboard = () => {
           title="Total Contacts"
           value={cards.totalContacts}
           accent="brand"
-          icon="👥"
+          icon={<LuUsers className="h-5 w-5" />}
           onClick={() => goToContacts({})}
         />
         <StatCard
           title="Not Contacted"
           value={cards.notContacted}
           accent="slate"
-          icon="📋"
+          icon={<LuClipboardList className="h-5 w-5" />}
           subtitle="No email sent yet"
           onClick={() => goToContacts({ status: 'Not Contacted' })}
+        />
+        <StatCard
+          title="Ready to Email"
+          value={cards.readyToEmail ?? 0}
+          accent={readyAccent(cards.readyToEmail ?? 0)}
+          icon={<LuTarget className="h-5 w-5" />}
+          subtitle="Have an email, not contacted yet"
+          onClick={() => goToContacts({ hasEmail: 'true', status: 'Not Contacted' })}
         />
         <StatCard
           title="Emails Sent"
           value={cards.emailsSent}
           accent="yellow"
-          icon="✉️"
+          icon={<LuSend className="h-5 w-5" />}
           subtitle="Initial email sent"
           onClick={() => goToContacts({ status: 'Email Sent' })}
         />
@@ -184,7 +251,7 @@ const Dashboard = () => {
           title="Follow-ups Pending"
           value={cards.followUpsPending}
           accent="orange"
-          icon="🔁"
+          icon={<LuRepeat className="h-5 w-5" />}
           subtitle="Follow-up 1 + Follow-up 2"
           // Card dono statuses ginta hai — is liye filter bhi dono par lagta hai
           onClick={() => goToContacts({ status: 'Follow-up 1,Follow-up 2' })}
@@ -193,7 +260,7 @@ const Dashboard = () => {
           title="New Replies"
           value={cards.newReplies || 0}
           accent="green"
-          icon="🔔"
+          icon={<LuBellRing className="h-5 w-5" />}
           subtitle="From your inbox — unread"
           onClick={() => navigate('/replies')}
         />
@@ -201,35 +268,35 @@ const Dashboard = () => {
           title="Replied"
           value={cards.replied}
           accent="green"
-          icon="💬"
+          icon={<LuMessageCircle className="h-5 w-5" />}
           onClick={() => goToContacts({ status: 'Replied' })}
         />
         <StatCard
           title="Deals Closed"
           value={cards.dealsClosed}
           accent="blue"
-          icon="🤝"
+          icon={<LuHandshake className="h-5 w-5" />}
           onClick={() => goToContacts({ status: 'Deal Closed' })}
         />
         <StatCard
           title="No Reply"
           value={cards.noReply}
           accent="slate"
-          icon="🔇"
+          icon={<LuBellOff className="h-5 w-5" />}
           onClick={() => goToContacts({ status: 'No Reply' })}
         />
         <StatCard
           title="Overdue Follow-ups"
           value={cards.overdue}
           accent="red"
-          icon="⏰"
+          icon={<LuAlarmClock className="h-5 w-5" />}
           subtitle="Past their due date"
         />
         <StatCard
           title="With Email"
           value={stats.withEmail}
           accent="brand"
-          icon="📧"
+          icon={<LuMail className="h-5 w-5" />}
           subtitle="Can be emailed from the app"
           onClick={() => goToContacts({ hasEmail: 'true' })}
         />
@@ -237,7 +304,7 @@ const Dashboard = () => {
           title="Without Email"
           value={stats.withoutEmail}
           accent="slate"
-          icon="📵"
+          icon={<LuMailX className="h-5 w-5" />}
           subtitle="Reach out by phone or website"
           onClick={() => goToContacts({ hasEmail: 'false' })}
         />
@@ -375,7 +442,8 @@ const Dashboard = () => {
               disabled={fuLoading}
               className="btn-primary py-1.5 text-xs"
             >
-              {fuLoading ? 'Searching...' : '🔍 Search'}
+              <LuSearch className="h-4 w-4" aria-hidden="true" />
+              {fuLoading ? 'Searching...' : 'Search'}
             </button>
 
             {filtered && (
@@ -389,7 +457,7 @@ const Dashboard = () => {
             )}
 
             <span className="rounded-full bg-brand-100 px-3 py-1 text-xs font-bold text-brand-700">
-              {followUps.length}
+              {fuMeta.totalRecords}
             </span>
           </div>
         </div>
@@ -403,62 +471,84 @@ const Dashboard = () => {
                 : '🎉 No follow-ups are due right now'}
           </p>
         ) : (
-          <div className="overflow-x-auto">
-            {/* Wahi style jo Contacts table par hai — dono ek jaise lagen */}
-            <table className="w-full text-sm [&_td]:border-b [&_td]:border-r [&_td]:border-slate-200/70 [&_td:last-child]:border-r-0">
-              <thead className="bg-slate-900 text-left text-xs uppercase tracking-wide text-slate-200 [&_th]:border-r [&_th]:border-white/10 [&_th:last-child]:border-r-0">
-                <tr>
-                  <th className="px-5 py-3 font-semibold">Contact</th>
-                  <th className="px-5 py-3 font-semibold">Email</th>
-                  <th className="px-5 py-3 font-semibold">Status</th>
-                  <th className="px-5 py-3 font-semibold">Follow-up Date</th>
-                </tr>
-              </thead>
+          <>
+            <div className="overflow-x-auto">
+              {/* Wahi style jo Contacts table par hai — dono ek jaise lagen */}
+              <table className="w-full text-sm [&_td]:border-b [&_td]:border-r [&_td]:border-slate-200/70 [&_td:last-child]:border-r-0">
+                <thead className="bg-slate-900 text-left text-xs uppercase tracking-wide text-slate-200 [&_th]:border-r [&_th]:border-white/10 [&_th:last-child]:border-r-0">
+                  <tr>
+                    <th className="px-5 py-3 font-semibold">Contact</th>
+                    <th className="px-5 py-3 font-semibold">Email</th>
+                    <th className="px-5 py-3 font-semibold">Status</th>
+                    <th className="px-5 py-3 font-semibold">Follow-up Date</th>
+                  </tr>
+                </thead>
 
-              <tbody>
-                {followUps.map((contact) => {
-                  const days = daysFromToday(contact.nextFollowUpDate);
+                <tbody>
+                  {followUps.map((contact) => {
+                    const days = daysFromToday(contact.nextFollowUpDate);
 
-                  return (
-                    <tr
-                      key={contact._id}
-                      onClick={() => setSelectedId(contact._id)}
-                      className={`cursor-pointer transition ${styleForStatus(contact.status).row}`}
-                    >
-                      <td className="px-5 py-3">
-                        <p className="font-semibold text-slate-800">{contact.name}</p>
-                        <p className="text-xs text-slate-500">
-                          {contact.category} · {contact.city || '—'}
-                        </p>
-                      </td>
-                      <td className="px-5 py-3 text-slate-600">
-                        {contact.email || <span className="text-amber-600">No email</span>}
-                      </td>
-                      <td className="px-5 py-3">
-                        <StatusBadge status={contact.status} />
-                      </td>
-                      <td className="px-5 py-3">
-                        <p className="font-medium text-slate-700">
-                          {formatDate(contact.nextFollowUpDate)}
-                        </p>
-                        <p
-                          className={`text-xs font-semibold ${
-                            contact.isOverdue ? 'text-red-600' : 'text-slate-500'
-                          }`}
-                        >
-                          {days < 0
-                            ? `${Math.abs(days)} din late`
-                            : days === 0
-                              ? 'Due today'
-                              : `${days} din baqi`}
-                        </p>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                    return (
+                      <tr
+                        key={contact._id}
+                        onClick={() => setSelectedId(contact._id)}
+                        className={`cursor-pointer transition ${styleForStatus(contact.status).row}`}
+                      >
+                        <td className="px-5 py-3">
+                          <p className="font-semibold text-slate-800">{contact.name}</p>
+                          <p className="text-xs text-slate-500">
+                            {contact.category} · {contact.city || '—'}
+                          </p>
+                        </td>
+                        <td className="px-5 py-3 text-slate-600">
+                          {contact.email || <span className="text-amber-600">No email</span>}
+                        </td>
+                        <td className="px-5 py-3">
+                          <StatusBadge status={contact.status} />
+                        </td>
+                        <td className="px-5 py-3">
+                          <p className="font-medium text-slate-700">
+                            {formatDate(contact.nextFollowUpDate)}
+                          </p>
+                          {/*
+                           * "Due today" aur overdue dono laal aur bold hain.
+                           *
+                           * Overdue ko bhi bold isi liye rakha hai -- agar sirf
+                           * "Due today" bold hota to jo date nikal chuki hai wo
+                           * kam ahem nazar aati, jo ulta hai.
+                           */}
+                          <p
+                            className={`text-xs ${
+                              contact.isOverdue || days === 0
+                                ? 'font-bold text-red-600'
+                                : 'font-semibold text-slate-500'
+                            }`}
+                          >
+                            {days < 0
+                              ? `${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'} late`
+                              : days === 0
+                                ? 'Due today'
+                                : `${days} day${days === 1 ? '' : 's'} left`}
+                          </p>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Contacts table wala hi Pagination -- yahan chhoti list hai is liye 10 se shuru */}
+            <Pagination
+              currentPage={fuPage}
+              totalPages={fuMeta.totalPages}
+              totalRecords={fuMeta.totalRecords}
+              perPage={fuPerPage}
+              perPageOptions={[10, 25, 50, 100]}
+              onPageChange={(p) => loadFollowUps(appliedRange.current, p, fuPerPage)}
+              onPerPageChange={(n) => loadFollowUps(appliedRange.current, 1, n)}
+            />
+          </>
         )}
       </div>
 

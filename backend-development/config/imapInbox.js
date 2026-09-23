@@ -22,7 +22,7 @@ const getConfig = () => ({
   secure:
     process.env.IMAP_SECURE !== undefined
       ? String(process.env.IMAP_SECURE) === 'true'
-      : Number(process.env.IMAP_PORT) !== 143,
+      : Number(process.env.IMAP_PORT) !== 993,
   user: process.env.IMAP_USER || process.env.SMTP_USER,
   pass: process.env.IMAP_PASS || process.env.SMTP_PASS,
 });

@@ -180,7 +180,7 @@ const fail = (res, error, status = 500) => {
  * taake "jo table me dikh raha hai wohi download ho" ka waada hamesha sacha rahe.
  */
 const buildContactQuery = (q = {}) => {
-  const { category, status, city, search, hasEmail, lastContactFrom, lastContactTo } = q;
+  const { category, status, city, country, search, hasEmail, lastContactFrom, lastContactTo } = q;
   const query = {};
 
   if (category && category !== 'All') query.category = category;
@@ -201,6 +201,7 @@ const buildContactQuery = (q = {}) => {
   }
 
   if (city && city !== 'All') query.city = city;
+  if (country && country !== 'All') query.country = country;
   if (hasEmail === 'true') query.hasEmail = true;
   if (hasEmail === 'false') query.hasEmail = false;
 
@@ -780,12 +781,16 @@ const importContacts = async (req, res) => {
 
 const getFilterOptions = async (req, res) => {
   try {
-    const cities = await contactModel.distinct('city', { city: { $ne: '' } });
+    const [cities, countries] = await Promise.all([
+      contactModel.distinct('city', { city: { $ne: '' } }),
+      contactModel.distinct('country', { country: { $ne: '' } }),
+    ]);
 
     return res.status(200).json({
       success: true,
       data: {
         cities: cities.sort(),
+        countries: countries.sort(),
         categories: CATEGORIES,
         statuses: STATUSES,
         statusColors: STATUS_COLORS,
@@ -870,7 +875,8 @@ const getAllTemplates = async (req, res) => {
 
 const getStats = async (req, res) => {
   try {
-    const [totalContacts, byStatusRaw, byCategoryRaw, byCityRaw, withEmail] = await Promise.all([
+    const [totalContacts, byStatusRaw, byCategoryRaw, byCityRaw, withEmail, readyToEmail] =
+      await Promise.all([
       contactModel.countDocuments(),
       contactModel.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]),
       contactModel.aggregate([{ $group: { _id: '$category', count: { $sum: 1 } } }]),
@@ -887,6 +893,14 @@ const getStats = async (req, res) => {
         { $limit: 10 },
       ]),
       contactModel.countDocuments({ hasEmail: true }),
+
+      /**
+       * "Ready to Email" -- jin ke paas email hai aur abhi tak koi email nahi gayi.
+       *
+       * Yehi asal kaam ki list hai. Jab ye 0 ho jaye to outreach ruk jata hai --
+       * chahe list me sainkron contacts hon, kyunke unke paas email hi nahi.
+       */
+      contactModel.countDocuments({ hasEmail: true, status: 'Not Contacted' }),
     ]);
 
     // Aggregation result ko aasan object me badlo
@@ -941,6 +955,7 @@ const getStats = async (req, res) => {
           noReply: statusCounts['No Reply'],
           overdue: overdueCount,
           newReplies,
+          readyToEmail,
         },
 
         // Bar chart ke liye
@@ -1019,10 +1034,20 @@ const getUpcomingFollowUps = async (req, res) => {
       query.nextFollowUpDate = { $ne: null, $lte: until };
     }
 
+    /**
+     * Pagination -- wohi shakal jo /api/contacts deta hai, taake frontend ka
+     * maujooda Pagination component bina tabdeeli ke chal jaye.
+     */
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const perPage = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 10));
+
+    const totalRecords = await contactModel.countDocuments(query);
+
     const contacts = await contactModel
       .find(query)
       .sort({ nextFollowUpDate: 1 })
-      .limit(parseInt(req.query.limit, 10) || 50);
+      .skip((page - 1) * perPage)
+      .limit(perPage);
 
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
@@ -1036,6 +1061,10 @@ const getUpcomingFollowUps = async (req, res) => {
     return res.status(200).json({
       success: true,
       count: data.length,
+      totalRecords,
+      perPage,
+      currentPage: page,
+      totalPages: Math.max(1, Math.ceil(totalRecords / perPage)),
       filtered: Boolean(from || to),
       data,
     });
