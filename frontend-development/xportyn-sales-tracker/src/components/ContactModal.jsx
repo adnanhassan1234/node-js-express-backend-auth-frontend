@@ -301,6 +301,10 @@ const ContactModal = ({ contactId, onClose, onSaved, onDeleted }) => {
                       <dd className="font-medium text-slate-800">{contact.address || '—'}</dd>
                     </div>
                     <div className="flex gap-2">
+                      <dt className="w-20 shrink-0 text-slate-500">Country</dt>
+                      <dd className="font-medium text-slate-800">{contact.country || '—'}</dd>
+                    </div>
+                    <div className="flex gap-2">
                       <dt className="w-20 shrink-0 text-slate-500">Added</dt>
                       <dd className="font-medium text-slate-800">{formatDate(contact.createdAt)}</dd>
                     </div>
