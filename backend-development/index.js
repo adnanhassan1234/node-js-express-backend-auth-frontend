@@ -157,7 +157,7 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./swagger');
-const connectDB = require('./cоnfig/db');
+const connectDB = require('./config/db');
 
 const stripePaymentController = require('./controller/stripePaymentController');
 const StudentRouter = require('./routes/studentRoutes');
@@ -167,7 +167,7 @@ const ContactRouter = require('./routes/contactRoutes');
 
 const dns = require("dns");
 
-dns.setServers(["8.8.8.8", "8.8.4.4 "]);
+dns.setServers(["8.8.8.8", "8.8.4.4"]);
 console.log("RAW MONGO_URI:", JSON.stringify(process.env.MONGO_URI));
 
 const app = express();

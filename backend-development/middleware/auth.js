@@ -1,5 +1,4 @@
 const jwt = require('jsonwebtoken');
-const publicRoutes = require('../routes/authRoutes'); // public routes (login/register) skip karne ke liye
 
 const authMiddleware = (req, res, next) => {
   try {

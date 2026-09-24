@@ -115,7 +115,7 @@ mongoose.connection.on('reconnected', () => {
   console.log(' MongoDB dobara jur gaya');
 });
 
-module.exports = connectDB();
+module.exports = connectDB;
 
 
 // const mongoose = require('mongoose');

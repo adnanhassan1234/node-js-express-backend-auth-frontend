@@ -22,7 +22,7 @@ router.post('/api/auth/login', trackerAuthController.login);
 router.get('/api/auth/me', authMiddleware, trackerAuthController.me);
 
 /* ------------------- STATS / DASHBOARD ------------------ */
-router.get('/api/stats/summary', authMiddleware, contactController.getstats);
+router.get('/api/stats/summary', authMiddleware, contactController.getStats);
 router.get('/api/stats/upcoming-followups', authMiddleware, contactController.getUpcomingFollowUps);
 
 /* ---------------------- TEMPLATES ----------------------- */
