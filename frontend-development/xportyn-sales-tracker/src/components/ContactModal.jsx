@@ -170,6 +170,8 @@ const ContactModal = ({ contactId, onClose, onSaved, onDeleted }) => {
 
       toast.success(res.data.message);
       onSaved?.(res.data.data);
+
+      // Bhejte hi modal band -- agla contact foran khola ja sake
       onClose();
     } catch (error) {
       toast.error(getErrorMessage(error, 'The email could not be sent'));

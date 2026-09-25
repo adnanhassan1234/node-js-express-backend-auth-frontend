@@ -14,7 +14,15 @@ const { simpleParser } = require('mailparser');
  *   INBOX_FOLDERS=INBOX,Spam  -> khud folder chunna ho to (warna app dhoond leti hai)
  */
 
-const isInboxEnabled = () => Boolean(process.env.IMAP_HOST);
+/**
+ * Inbox parhna tabhi mumkin hai jab HOST ke sath login bhi mojood ho.
+ *
+ * Pehle sirf HOST dekha jata tha -- is liye khali IMAP_USER/IMAP_PASS ke
+ * bawajood watcher "chal raha hai" kehta tha aur har scan chup chaap fail
+ * hota tha. Ab saaf pata chal jata hai ke setup adhoora hai.
+ */
+const isInboxEnabled = () =>
+  Boolean(process.env.IMAP_HOST && process.env.IMAP_USER && process.env.IMAP_PASS);
 
 const getConfig = () => ({
   host: process.env.IMAP_HOST,
@@ -22,7 +30,7 @@ const getConfig = () => ({
   secure:
     process.env.IMAP_SECURE !== undefined
       ? String(process.env.IMAP_SECURE) === 'true'
-      : Number(process.env.IMAP_PORT) !== 993,
+      : Number(process.env.IMAP_PORT) === 993,   // 993 = TLS wala port
   user: process.env.IMAP_USER || process.env.SMTP_USER,
   pass: process.env.IMAP_PASS || process.env.SMTP_PASS,
 });
