@@ -27,6 +27,7 @@ const {
 } = require('../config/mailer');
 const { saveToSentFolder, isSentSaveEnabled } = require('../config/imapSent');
 const { scanForReplies } = require('../config/replyWatcher');
+const { closeStaleFollowUps } = require('../config/followUpCloser');
 
 /* ================================================================== */
 /*  HELPERS                                                            */
@@ -778,6 +779,33 @@ const importContacts = async (req, res) => {
 /* ================================================================== */
 /*  8. FILTER OPTIONS (dropdowns ke liye)                              */
 /* ================================================================== */
+
+/**
+ * Follow-up 2 wale purane contacts ko "No Reply" kar deta hai.
+ *
+ * Khud ba khud bhi chalta rehta hai (config/followUpCloser.js), ye route
+ * sirf tab ke liye hai jab foran chalana ho.
+ */
+const closeFollowUps = async (req, res) => {
+  try {
+    const result = await closeStaleFollowUps({ days: req.query.days });
+
+    if (!result.ok) {
+      return res.status(400).json({ success: false, message: result.message });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      days: result.days,
+      checked: result.checked,
+      closed: result.closed,
+      data: result.items,
+    });
+  } catch (error) {
+    return fail(res, error);
+  }
+};
 
 const getFilterOptions = async (req, res) => {
   try {
@@ -1818,6 +1846,7 @@ module.exports = {
   getAllTemplates,
   getStats,
   getUpcomingFollowUps,
+  closeFollowUps,
   exportContacts,
   sendContactEmail,
   testEmailConnection,

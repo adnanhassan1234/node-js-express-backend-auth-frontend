@@ -24,6 +24,7 @@ router.get('/api/auth/me', authMiddleware, trackerAuthController.me);
 /* ------------------- STATS / DASHBOARD ------------------ */
 router.get('/api/stats/summary', authMiddleware, contactController.getStats);
 router.get('/api/stats/upcoming-followups', authMiddleware, contactController.getUpcomingFollowUps);
+router.post('/api/contacts/close-followups', authMiddleware, contactController.closeFollowUps);
 
 /* ---------------------- TEMPLATES ----------------------- */
 router.get('/api/templates', authMiddleware, contactController.getAllTemplates);

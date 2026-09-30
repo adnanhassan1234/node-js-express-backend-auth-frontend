@@ -107,3 +107,75 @@ export const templatesApi = {
   // GET /api/templates
   all: () => client.get('/templates'),
 };
+
+/* --------------------------- LINKEDIN --------------------------- */
+/**
+ * LinkedIn Dashboard ka poora API.
+ *
+ * `playbook` ek hi dafa aata hai aur us me saara tay-shuda content hota hai
+ * (stages, targets, message templates, qawaid) -- is liye frontend me kuch
+ * bhi hardcode nahi karna parta.
+ */
+export const linkedinApi = {
+  // GET /api/linkedin/playbook
+  playbook: () => client.get('/linkedin/playbook'),
+
+  // GET /api/linkedin/stats
+  stats: (params = {}) => client.get('/linkedin/stats', { params }),
+
+  /* ---- Pipeline ---- */
+  buyers: (params = {}) => client.get('/linkedin/buyers', { params }),
+  buyer: (id) => client.get('/linkedin/buyers/' + id),
+  createBuyer: (payload) => client.post('/linkedin/buyers', payload),
+  updateBuyer: (id, payload) => client.put('/linkedin/buyers/' + id, payload),
+  deleteBuyer: (id) => client.delete('/linkedin/buyers/' + id),
+
+  // Bulk delete -- { ids: [...] } ya { all: true, ...filters }
+  bulkDeleteBuyers: (payload) => client.post('/linkedin/buyers/bulk-delete', payload),
+
+  /* ---- Poora backup (Excel) ---- */
+  // Sirf list nahi -- activity, Ask Zain, reports aur daily bhi
+  backup: () => client.get('/linkedin/backup', { responseType: 'blob' }),
+
+  restore: (file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return client.post('/linkedin/restore', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+
+  // Outreach ka "Mark as sent"
+  logActivity: (id, payload) =>
+    client.post('/linkedin/buyers/' + id + '/activity', payload),
+
+  // GET /api/linkedin/buyers/export (wohi filters jo list par lage hain)
+  exportBuyers: (params = {}) =>
+    client.get('/linkedin/buyers/export', { params, responseType: 'blob' }),
+
+  importBuyers: (file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return client.post('/linkedin/buyers/import', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+
+  /* ---- Rozana ka mamool ---- */
+  day: (params = {}) => client.get('/linkedin/day', { params }),
+  updateDay: (payload) => client.patch('/linkedin/day', payload),
+
+  /* ---- Ask Zain ---- */
+  questions: (params = {}) => client.get('/linkedin/questions', { params }),
+  createQuestion: (payload) => client.post('/linkedin/questions', payload),
+  answerQuestion: (id, payload) => client.patch('/linkedin/questions/' + id, payload),
+  deleteQuestion: (id) => client.delete('/linkedin/questions/' + id),
+
+  /* ---- Hafte ki report ---- */
+  reportPreview: (params = {}) => client.get('/linkedin/report/preview', { params }),
+  saveReport: (payload) => client.post('/linkedin/report', payload),
+  reports: () => client.get('/linkedin/reports'),
+
+  // DELETE /api/linkedin/reports/:id (sirf report jati hai, activity nahi)
+  deleteReport: (id) => client.delete('/linkedin/reports/' + id),
+};

@@ -61,6 +61,25 @@ const readyAccent = (n) => {
   return 'green';                 // kaafi kaam mojood hai
 };
 
+/**
+ * Follow-up ki ahmiyat ka rang -- teen darje.
+ *
+ * Sab kuch laal kar dena theek nahi: agar har row laal ho to laal ka matlab
+ * hi khatam ho jata hai. Is liye:
+ *
+ *   laal  = abhi karna hai   (date nikal chuki, ya aaj due)
+ *   amber = kal karna hai    (1 day left)
+ *   grey  = baad me
+ */
+const urgencyClass = (isOverdue, days) => {
+  if (days === null || days === undefined) return 'font-semibold text-slate-500';
+
+  if (isOverdue || days <= 0) return 'font-bold text-red-600';
+  if (days === 1) return 'font-bold text-amber-600';
+
+  return 'font-semibold text-slate-500';
+};
+
 const followUpParams = (range, page = 1, perPage = 10) => ({
   page,
   limit: perPage,
@@ -384,8 +403,9 @@ const Dashboard = () => {
           <h3 className="mb-3 text-sm font-bold text-slate-800">Top Cities</h3>
           <div className="flex flex-wrap gap-2">
             {byCity.map((c) => (
+              // Ek hi city do mulkon me ho sakti hai -- key me country bhi
               <button
-                key={c.city}
+                key={c.city + '|' + c.country}
                 type="button"
                 onClick={() => goToContacts({ city: c.city })}
                 className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs
@@ -510,20 +530,8 @@ const Dashboard = () => {
                           <p className="font-medium text-slate-700">
                             {formatDate(contact.nextFollowUpDate)}
                           </p>
-                          {/*
-                           * "Due today" aur overdue dono laal aur bold hain.
-                           *
-                           * Overdue ko bhi bold isi liye rakha hai -- agar sirf
-                           * "Due today" bold hota to jo date nikal chuki hai wo
-                           * kam ahem nazar aati, jo ulta hai.
-                           */}
-                          <p
-                            className={`text-xs ${
-                              contact.isOverdue || days === 0
-                                ? 'font-bold text-red-600'
-                                : 'font-semibold text-slate-500'
-                            }`}
-                          >
+                          {/* Rang ki wajah upar urgencyClass me likhi hai */}
+                          <p className={`text-xs ${urgencyClass(contact.isOverdue, days)}`}>
                             {days < 0
                               ? `${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'} late`
                               : days === 0

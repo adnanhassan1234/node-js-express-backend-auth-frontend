@@ -9,6 +9,7 @@ import {
   LuMessageSquare,
   LuMail,
   LuSettings,
+  LuLinkedin,
   LuLogOut,
   LuMenu,
 } from 'react-icons/lu';
@@ -20,6 +21,7 @@ const NAV_ITEMS = [
   { to: '/replies', label: 'Replies', Icon: LuMessageSquare },
   { to: '/templates', label: 'Email Templates', Icon: LuMail },
   { to: '/settings', label: 'Settings', Icon: LuSettings },
+  { to: '/linkedin', label: 'LinkedIn', Icon: LuLinkedin },
 ];
 
 /** App shell — sidebar + top bar. Mobile par sidebar drawer ban jata hai. */

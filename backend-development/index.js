@@ -164,6 +164,7 @@ const StudentRouter = require('./routes/studentRoutes');
 const AuthRouter = require('./routes/authRoutes');
 // XPORTYN Sales Tracker (saare endpoints /api/... par hain)
 const ContactRouter = require('./routes/contactRoutes');
+const LinkedinRouter = require('./routes/linkedinRoutes');
 
 const dns = require("dns");
 
@@ -199,6 +200,7 @@ app.use('/swagger-api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use(AuthRouter);
 app.use(StudentRouter);
 app.use(ContactRouter);
+app.use(LinkedinRouter);
 
 /* ================= MULTER / UPLOAD ERROR HANDLER ================= */
 // File type ya size galat ho to JSON error mile (HTML error page nahi)
@@ -219,9 +221,13 @@ connectDB();
  * Wakfa .env ki REPLY_WATCH_MINUTES se set hota hai (0 = band).
  */
 const { startReplyWatcher } = require('./config/replyWatcher');
+const { startFollowUpCloser } = require('./config/followUpCloser');
 
 app.set('io', io); // taake controller bhi khabar bhej sake
 startReplyWatcher(io);
+
+// Follow-up 2 ke chand din baad silsila khud band ho jata hai
+startFollowUpCloser();
 
 /* ================= SOCKET ================= */
 io.on('connection', (socket) => {

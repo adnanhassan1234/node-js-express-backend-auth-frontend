@@ -10,6 +10,7 @@ import Contacts from './pages/Contacts';
 import Replies from './pages/Replies';
 import Templates from './pages/Templates';
 import Settings from './pages/Settings';
+import LinkedIn from './pages/LinkedIn';
 
 /** Protected page ko Layout ke andar wrap karne ka shortcut */
 const Protected = ({ children }) => (
@@ -64,6 +65,14 @@ const App = () => (
       element={
         <Protected>
           <Settings />
+        </Protected>
+      }
+    />
+    <Route
+      path="/linkedin"
+      element={
+        <Protected>
+          <LinkedIn />
         </Protected>
       }
     />
