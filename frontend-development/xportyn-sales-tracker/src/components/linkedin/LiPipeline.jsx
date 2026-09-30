@@ -4,13 +4,13 @@ import {
   LuPlus,
   LuDownload,
   LuUpload,
-  LuExternalLink,
   LuSearch,
   LuTrash2,
   LuDatabaseBackup,
   LuHardDriveDownload,
   LuChevronDown,
   LuFileText,
+  LuLinkedin,
 } from 'react-icons/lu';
 
 import { linkedinApi } from '../../api/endpoints';
@@ -21,6 +21,35 @@ import { formatDate, daysFromToday } from '../../utils/date';
 import Spinner from '../Spinner';
 import Pagination from '../Pagination';
 import LiBuyerModal from './LiBuyerModal';
+
+/**
+ * Haath se likhe URL par bharosa nahi kiya ja sakta.
+ *
+ * "linkedin.com/in/sarah" me https:// nahi hai, to browser usay app ke andar
+ * ka raasta samajh kar apni hi site par kholne ki koshish karta hai. Is liye
+ * https:// khud laga dete hain.
+ *
+ * Aur "/in/sarah" jaisa sirf raasta ho (log aksar itna hi copy karte hain) to
+ * usay LinkedIn ke domain par lagate hain -- warna "https://in/sarah" ban kar
+ * kahin nahi kholta.
+ */
+const profileUrl = (value) => {
+  const v = String(value || '').trim();
+  if (!v) return '';
+
+  if (/^https?:\/\//i.test(v)) return v;
+  if (v.startsWith('/')) return 'https://www.linkedin.com' + v;
+
+  return 'https://' + v;
+};
+
+/**
+ * Jis buyer ka profile link save nahi, uske liye naam + club se LinkedIn par
+ * dhoondne ka raasta. Import ki hui rows me link aksar khali hota hai.
+ */
+const searchUrl = (b) =>
+  'https://www.linkedin.com/search/results/people/?keywords=' +
+  encodeURIComponent([b.name, b.company].filter(Boolean).join(' '));
 
 /**
  * Pipeline tracker — playbook ki "one row per person" wali table.
@@ -458,6 +487,8 @@ const LiPipeline = ({ playbook, onChanged }) => {
                     </th>
                     <th className="px-4 py-3 font-semibold">#</th>
                     <th className="px-4 py-3 font-semibold">Buyer</th>
+                    <th className="px-4 py-3 font-semibold">Country</th>
+                    <th className="px-4 py-3 font-semibold">LinkedIn</th>
                     <th className="px-4 py-3 font-semibold">Type</th>
                     <th className="px-4 py-3 font-semibold">Stage</th>
                     <th className="px-4 py-3 font-semibold">Next Step</th>
@@ -491,27 +522,48 @@ const LiPipeline = ({ playbook, onChanged }) => {
 
                         <td className="px-4 py-3">
                           <p className="font-semibold text-slate-800">{b.name}</p>
-                          <p className="text-xs text-slate-500">
-                            {b.company || '—'}
-                            {b.country ? ' · ' + b.country : ''}
-                          </p>
+                          {/* Country ka apna khaana hai, is liye yahan sirf club */}
+                          <p className="text-xs text-slate-500">{b.company || '—'}</p>
                           {b.jobTitle && <p className="text-xs text-slate-400">{b.jobTitle}</p>}
+                        </td>
+
+                        <td className="px-4 py-3 text-slate-700">{b.country || '—'}</td>
+
+                        {/*
+                          Pehle ye link Type ke saath ek chhota icon tha, jo
+                          nazar hi nahi aata tha. Ab apna column hai.
+
+                          stopPropagation zaroori hai: row par click modal
+                          kholta hai, aur hum sirf LinkedIn kholna chahte hain.
+                        */}
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          {b.linkedinUrl ? (
+                            <a
+                              href={profileUrl(b.linkedinUrl)}
+                              target="_blank"
+                              rel="noreferrer"
+                              title={'Profile kholein — ' + b.name}
+                              className="inline-flex items-center gap-1 rounded-md bg-brand-50 px-2 py-1 text-xs font-bold text-brand-700 transition hover:bg-brand-100"
+                            >
+                              <LuLinkedin className="h-3.5 w-3.5" />
+                              LinkedIn
+                            </a>
+                          ) : (
+                            <a
+                              href={searchUrl(b)}
+                              target="_blank"
+                              rel="noreferrer"
+                              title="Profile ka link save nahi — naam aur club se LinkedIn par dhoondein"
+                              className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 transition hover:text-brand-700 hover:underline"
+                            >
+                              <LuSearch className="h-3.5 w-3.5" />
+                              Dhoondein
+                            </a>
+                          )}
                         </td>
 
                         <td className="px-4 py-3 text-xs text-slate-600">
                           {BUYER_TYPE_SHORT[b.buyerType] || b.buyerType}
-                          {b.linkedinUrl && (
-                            <a
-                              href={b.linkedinUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              title="LinkedIn profile"
-                              className="ml-1.5 inline-block align-middle text-brand-600 hover:text-brand-800"
-                            >
-                              <LuExternalLink className="h-3.5 w-3.5" />
-                            </a>
-                          )}
                         </td>
 
                         <td className="px-4 py-3">
