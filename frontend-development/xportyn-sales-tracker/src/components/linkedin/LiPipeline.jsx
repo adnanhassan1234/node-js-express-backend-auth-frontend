@@ -11,6 +11,7 @@ import {
   LuChevronDown,
   LuFileText,
   LuLinkedin,
+  LuUserCheck,
 } from 'react-icons/lu';
 
 import { linkedinApi } from '../../api/endpoints';
@@ -21,6 +22,20 @@ import { formatDate, daysFromToday } from '../../utils/date';
 import Spinner from '../Spinner';
 import Pagination from '../Pagination';
 import LiBuyerModal from './LiBuyerModal';
+
+/**
+ * Agla qadam kitna aham hai -- rang se.
+ *
+ * Do din ya us se kam = laal aur mota. Wajah: ek din ka waqt rakh kar kaam
+ * karna mushkil hai; do din pehle nazar aa jaye to aadmi tayyari kar leta
+ * hai. Teesra din peela -- khabardar, magar abhi aaram hai.
+ */
+const urgencyClass = (b, days) => {
+  if (b.isOverdue || days <= 2) return 'font-bold text-red-600';
+  if (days === 3) return 'font-bold text-amber-600';
+
+  return 'font-semibold text-slate-500';
+};
 
 /**
  * Haath se likhe URL par bharosa nahi kiya ja sakta.
@@ -63,9 +78,18 @@ const LiPipeline = ({ playbook, onChanged }) => {
   const [loading, setLoading] = useState(true);
 
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(25);
+  const [perPage, setPerPage] = useState(12);
 
-  const [filters, setFilters] = useState({ search: '', stage: 'All', buyerType: 'All', dueOnly: false });
+  const [filters, setFilters] = useState({
+    search: '',
+    stage: 'All',
+    buyerType: 'All',
+    dueOnly: false,
+
+    /* Last Contact ka arsa -- yyyy-mm-dd, khali matlab koi hadd nahi */
+    from: '',
+    to: '',
+  });
 
   /**
    * Chune hue buyers.
@@ -88,6 +112,11 @@ const LiPipeline = ({ playbook, onChanged }) => {
   /* Download menu — CSV aur poora backup dono isi ke neeche hain */
   const [downloadOpen, setDownloadOpen] = useState(false);
 
+  const [marking, setMarking] = useState(false);
+
+  /* Kis row ka quick action chal raha hai */
+  const [acting, setActing] = useState('');
+
   const params = useCallback(
     () => ({
       page,
@@ -96,6 +125,8 @@ const LiPipeline = ({ playbook, onChanged }) => {
       stage: filters.stage !== 'All' ? filters.stage : undefined,
       buyerType: filters.buyerType !== 'All' ? filters.buyerType : undefined,
       dueOnly: filters.dueOnly ? 'true' : undefined,
+      from: filters.from || undefined,
+      to: filters.to || undefined,
     }),
     [page, perPage, filters]
   );
@@ -169,6 +200,65 @@ const LiPipeline = ({ playbook, onChanged }) => {
       toast.error(getErrorMessage(error, 'Delete failed'));
     } finally {
       setDeleting(false);
+    }
+  };
+
+  /**
+   * "In logon ne connection accept kar li."
+   *
+   * Accept hone ki ginti manager ki report ka hissa hai, magar pehle usay
+   * likhne ka sirf ek raasta tha: har buyer ka modal khol kar stage badalna.
+   * Hafte me 25 dafa aisa karna kaam nahi, saza hai.
+   */
+  const handleAccepted = async () => {
+    if (selected.length === 0) return;
+
+    setMarking(true);
+
+    try {
+      const res = await linkedinApi.bulkLogActivity({
+        ids: selected,
+        type: 'accepted',
+        stage: 'Connected',
+        note: 'Connection accept hui',
+      });
+
+      toast.success(res.data.message);
+      clearSelection();
+      afterChange();
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Could not save'));
+    } finally {
+      setMarking(false);
+    }
+  };
+
+  /**
+   * Table se seedha stage badalna -- Action column ka dropdown.
+   *
+   * Pehle yahan sirf ek button tha jo agla qadam dikhata tha. Masla ye tha ke
+   * agar row kisi aur stage par hai to jo kaam chahiye wo nazar hi nahi aata
+   * -- misal ke taur par "In Conversation" wali row par "Accept ho gaya" ka
+   * koi raasta nahi tha. Dropdown me har stage mojood hai.
+   *
+   * PUT /buyers/:id hi kaafi hai: wo stage badalta hai, usi qadam ki activity
+   * khud likh deta hai (STAGE_ACTIVITY se) aur ek hi din dobara ginne se
+   * rokta hai. Yani "Accepted" ki ginti isi se barhti hai -- koi alag call
+   * nahi chahiye.
+   */
+  const changeStage = async (buyer, stage) => {
+    if (stage === buyer.stage) return;
+
+    setActing(buyer._id);
+
+    try {
+      await linkedinApi.updateBuyer(buyer._id, { stage });
+      toast.success(buyer.name + ' — ' + stage);
+      afterChange();
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Could not save'));
+    } finally {
+      setActing('');
     }
   };
 
@@ -264,12 +354,16 @@ const LiPipeline = ({ playbook, onChanged }) => {
     <div className="space-y-4">
       {/* ---------- Filters + actions ---------- */}
       <div className="card p-4">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="lg:col-span-2">
+        {/*
+          Search ab poori chaurai nahi leta -- tareekh wale do khane aa gaye
+          hain, aur paanchon ek hi line me aa jate hain.
+        */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div>
             <label className="label">Search</label>
             <input
               className="input"
-              placeholder="Name, club, country ya job title..."
+              placeholder="Name, organization, country..."
               value={filters.search}
               onChange={(e) => setFilter('search', e.target.value)}
             />
@@ -290,7 +384,40 @@ const LiPipeline = ({ playbook, onChanged }) => {
               {playbook.buyerTypes.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
+
+          {/* Last Contact ka arsa -- "is hafte kis kis se baat hui" */}
+          <div>
+            <label className="label">Last contact from</label>
+            <input
+              type="date"
+              className="input"
+              value={filters.from}
+              max={filters.to || undefined}
+              onChange={(e) => setFilter('from', e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className="label">Last contact to</label>
+            <input
+              type="date"
+              className="input"
+              value={filters.to}
+              min={filters.from || undefined}
+              onChange={(e) => setFilter('to', e.target.value)}
+            />
+          </div>
         </div>
+
+        {(filters.from || filters.to) && (
+          <button
+            type="button"
+            onClick={() => setFilters((f) => ({ ...f, from: '', to: '' }))}
+            className="mt-2 text-xs font-semibold text-brand-700 hover:underline"
+          >
+            Tareekh ka filter hatayein
+          </button>
+        )}
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-3">
           <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-slate-600">
@@ -304,9 +431,14 @@ const LiPipeline = ({ playbook, onChanged }) => {
           </label>
 
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => fileRef.current?.click()} className="btn-secondary py-1.5 text-xs">
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              title="Sirf buyers ki saadi list (naam, organization, stage…). Poore backup ke liye Restore."
+              className="btn-secondary py-1.5 text-xs"
+            >
               <LuUpload className="h-4 w-4" />
-              Import CSV
+              Import list
             </button>
             <input
               ref={fileRef}
@@ -389,11 +521,11 @@ const LiPipeline = ({ playbook, onChanged }) => {
               type="button"
               onClick={() => restoreRef.current?.click()}
               disabled={busy}
-              title="Backup file se sab kuch wapas laayein"
+              title="Full backup (Excel) se sab kuch wapas — activity, Ask Zain, reports, daily"
               className="btn-secondary py-1.5 text-xs"
             >
               <LuHardDriveDownload className="h-4 w-4" />
-              Restore
+              Restore backup
             </button>
             <input
               ref={restoreRef}
@@ -438,9 +570,29 @@ const LiPipeline = ({ playbook, onChanged }) => {
             )}
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button type="button" onClick={clearSelection} className="btn-secondary py-1.5 text-xs">
               Clear
+            </button>
+
+            {/*
+              selectAll par band: "filter ke saare rows" ko accepted kar dena
+              hafte ki ginti kharab kar deta hai. Jo asal me accept hue, sirf
+              unke checkbox lagayein.
+            */}
+            <button
+              type="button"
+              onClick={handleAccepted}
+              disabled={marking || selectAll}
+              title={
+                selectAll
+                  ? 'Saare rows par ek saath accepted lagana theek nahi — jin ne accept kiya sirf unhein chunein'
+                  : 'Chune hue buyers ko Connected karein aur accepted ginti me likhein'
+              }
+              className="btn-secondary py-1.5 text-xs"
+            >
+              <LuUserCheck className="h-4 w-4" />
+              {marking ? 'Saving...' : 'Accept ho gaya (' + selected.length + ')'}
             </button>
 
             <button
@@ -465,7 +617,7 @@ const LiPipeline = ({ playbook, onChanged }) => {
             <LuSearch className="mx-auto h-8 w-8 text-slate-300" />
             <p className="mt-2 font-semibold text-slate-700">Koi buyer nahi mila</p>
             <p className="mt-1 text-sm text-slate-400">
-              {filters.search || filters.stage !== 'All' || filters.dueOnly
+              {filters.search || filters.stage !== 'All' || filters.dueOnly || filters.from || filters.to
                 ? 'Filters badal kar dekhein'
                 : 'Pehla buyer add karein — connection request bhejte waqt row banayein'}
             </p>
@@ -493,6 +645,7 @@ const LiPipeline = ({ playbook, onChanged }) => {
                     <th className="px-4 py-3 font-semibold">Stage</th>
                     <th className="px-4 py-3 font-semibold">Next Step</th>
                     <th className="px-4 py-3 font-semibold">Last Contact</th>
+                    <th className="px-4 py-3 font-semibold">Action</th>
                   </tr>
                 </thead>
 
@@ -573,31 +726,66 @@ const LiPipeline = ({ playbook, onChanged }) => {
                         </td>
 
                         <td className="px-4 py-3">
-                          <p className="text-slate-700">{b.nextStep || '—'}</p>
+                          {/*
+                            Do alag cheezein hain: kya karna hai (text) aur
+                            kab (tareekh). Aksar sirf tareekh bhari hoti hai.
+                            Pehle us soorat me tareekh ke upar khali "—" aata
+                            tha, jo sirf uljhan paida karta tha -- lagta tha
+                            ke kuch gum ho gaya. Ab "—" tab hi aata hai jab
+                            dono khali hon.
+                          */}
+                          {b.nextStep ? (
+                            <p className="text-slate-700">{b.nextStep}</p>
+                          ) : (
+                            !b.nextStepDate && <p className="text-slate-400">—</p>
+                          )}
+
                           {b.nextStepDate && (
-                            <p
-                              className={`text-xs ${
-                                b.isOverdue
-                                  ? 'font-bold text-red-600'
-                                  : days === 0
-                                    ? 'font-bold text-red-600'
-                                    : days === 1
-                                      ? 'font-bold text-amber-600'
-                                      : 'font-semibold text-slate-500'
-                              }`}
-                            >
+                            <p className={`text-xs ${urgencyClass(b, days)}`}>
                               {formatDate(b.nextStepDate)}
                               {days < 0
                                 ? ` · ${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'} late`
                                 : days === 0
                                   ? ' · Due today'
-                                  : ''}
+                                  : days <= 2
+                                    ? ` · ${days} day${days === 1 ? '' : 's'} left`
+                                    : ''}
                             </p>
                           )}
                         </td>
 
                         <td className="px-4 py-3 text-slate-600">
                           {b.lastContactDate ? formatDate(b.lastContactDate) : '—'}
+                        </td>
+
+                        {/*
+                          Stage ka dropdown. Default me wohi stage chuna hua
+                          hota hai jahan buyer ab hai, aur agle qadam par
+                          nishan laga hota hai.
+
+                          stopPropagation zaroori hai -- warna dropdown kholte
+                          hi row ka modal khul jata hai.
+                        */}
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          <select
+                            value={b.stage}
+                            onChange={(e) => changeStage(b, e.target.value)}
+                            disabled={acting === b._id}
+                            title={playbook.nextActions?.[b.stage]?.hint || 'Stage badlein — ginti khud likh jati hai'}
+                            className="input w-auto py-1 text-xs disabled:opacity-50"
+                          >
+                            {playbook.stages.map((stage) => (
+                              <option key={stage} value={stage}>
+                                {stage === playbook.nextActions?.[b.stage]?.stage
+                                  ? stage + '  ← agla qadam'
+                                  : stage}
+                              </option>
+                            ))}
+                          </select>
+
+                          {acting === b._id && (
+                            <span className="ml-1.5 text-xs text-slate-400">Saving...</span>
+                          )}
                         </td>
                       </tr>
                     );
@@ -611,7 +799,7 @@ const LiPipeline = ({ playbook, onChanged }) => {
               totalPages={meta.totalPages}
               totalRecords={meta.totalRecords}
               perPage={perPage}
-              perPageOptions={[25, 50, 100, 200]}
+              perPageOptions={[12, 25, 50, 100, 200]}
               onPageChange={setPage}
               onPerPageChange={(n) => { setPerPage(n); setPage(1); }}
             />

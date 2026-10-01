@@ -160,7 +160,7 @@ const LiRoutine = ({ playbook, onChanged }) => {
         </ul>
 
         <div className="mt-4 border-t border-slate-200 pt-4">
-          <label className="label">Is hafte ka market (Monday wala kaam)</label>
+          <label className="label">This week&apos;s market</label>
           <input
             className="input sm:w-72"
             placeholder="UK, USA, UAE…"

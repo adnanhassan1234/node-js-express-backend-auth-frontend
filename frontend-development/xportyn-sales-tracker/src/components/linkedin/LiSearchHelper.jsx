@@ -75,7 +75,7 @@ const LiSearchHelper = ({ playbook }) => {
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="label">Job title</label>
+                <label className="label">Job Title</label>
                 <select
                   className="input"
                   value={titleOf(row)}
@@ -143,7 +143,7 @@ const LiSearchHelper = ({ playbook }) => {
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label className="label">Job title</label>
+              <label className="label">Job Title</label>
               <select className="input" value={extraTitle} onChange={(e) => setExtraTitle(e.target.value)}>
                 {extra.jobTitles.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>

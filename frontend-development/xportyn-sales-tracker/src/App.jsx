@@ -11,6 +11,7 @@ import Replies from './pages/Replies';
 import Templates from './pages/Templates';
 import Settings from './pages/Settings';
 import LinkedIn from './pages/LinkedIn';
+import SocialFinder from './pages/SocialFinder';
 
 /** Protected page ko Layout ke andar wrap karne ka shortcut */
 const Protected = ({ children }) => (
@@ -73,6 +74,16 @@ const App = () => (
       element={
         <Protected>
           <LinkedIn />
+        </Protected>
+      }
+    />
+
+    {/* LinkedIn module se alag -- sirf dhoondne me asani ke liye */}
+    <Route
+      path="/finder"
+      element={
+        <Protected>
+          <SocialFinder />
         </Protected>
       }
     />

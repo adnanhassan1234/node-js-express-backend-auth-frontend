@@ -133,6 +133,19 @@ export const linkedinApi = {
   // Bulk delete -- { ids: [...] } ya { all: true, ...filters }
   bulkDeleteBuyers: (payload) => client.post('/linkedin/buyers/bulk-delete', payload),
 
+  // POST /api/linkedin/buyers/bulk-activity (chune hue buyers par ek hi kaam)
+  bulkLogActivity: (payload) => client.post('/linkedin/buyers/bulk-activity', payload),
+
+  // POST /api/linkedin/buyers/from-pdf (LinkedIn profile PDF -> form ka data)
+  buyerFromPdf: (file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+
+    return client.post('/linkedin/buyers/from-pdf', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+
   /* ---- Poora backup (Excel) ---- */
   // Sirf list nahi -- activity, Ask Zain, reports aur daily bhi
   backup: () => client.get('/linkedin/backup', { responseType: 'blob' }),

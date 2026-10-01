@@ -74,6 +74,32 @@ const linkedinBuyerSchema = new mongoose.Schema(
 );
 
 /**
+ * Activity kis waqt ki likhi jaye.
+ *
+ * Aam tor par "abhi" -- yehi sach hai, aur Activity ki list me yehi dikhna
+ * chahiye.
+ *
+ * Pehle seedha `lastContactDate` likh di jati thi. Wo DIN ki tareekh hai,
+ * waqt ki nahi -- yani raat ke 12 baje. Is liye har naye buyer ki activity
+ * "12:00 am" dikhati thi, chahe aap ne usay dopahar me add kiya ho.
+ *
+ * Lekin agar lastContactDate kisi AUR din ki ho (yani aap purana record daal
+ * rahe hain) to wohi din rakhte hain -- warna pichhle hafte ka kaam is hafte
+ * ki ginti me chala jata.
+ */
+const activityAt = (lastContact) => {
+  const now = new Date();
+  if (!lastContact) return now;
+
+  const sameDay =
+    lastContact.getFullYear() === now.getFullYear() &&
+    lastContact.getMonth() === now.getMonth() &&
+    lastContact.getDate() === now.getDate();
+
+  return sameDay ? now : lastContact;
+};
+
+/**
  * Mongoose 9 me `pre('save')` ko `next` nahi milta -- sirf kaam karo aur
  * chhor do. (Ye purani app me ek dafa crash kara chuka hai.)
  */
@@ -83,7 +109,7 @@ linkedinBuyerSchema.pre('save', function setColour() {
   // Pehli dafa banate waqt stage ke mutabiq activity likh do
   if (this.isNew && this.activity.length === 0) {
     const type = STAGE_ACTIVITY[this.stage];
-    if (type) this.activity.push({ type, at: this.lastContactDate || new Date() });
+    if (type) this.activity.push({ type, at: activityAt(this.lastContactDate) });
   }
 });
 

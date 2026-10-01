@@ -2,6 +2,7 @@ const express = require('express');
 
 const linkedinController = require('../controller/linkedinController');
 const uploadExcel = require('../config/uploadExcel');
+const uploadPdf = require('../config/uploadPdf');
 const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
@@ -56,10 +57,33 @@ router.post(
   linkedinController.restoreAll
 );
 
+// LinkedIn ka profile PDF -> Add Buyer ka form (kuch save nahi hota)
+/**
+ * multer ki ghalti ko saaf JSON me badalte hain.
+ *
+ * Warna ghalat file (misal CSV) bhejne par Express apna HTML error page bhej
+ * deta hai, aur frontend usay parh hi nahi pata -- user ko bekaar sa paigham
+ * milta hai.
+ */
+const withPdf = (req, res, next) =>
+  uploadPdf.single('file')(req, res, (err) =>
+    err ? res.status(400).json({ success: false, message: err.message }) : next()
+  );
+
+router.post(
+  '/api/linkedin/buyers/from-pdf',
+  authMiddleware,
+  withPdf,
+  linkedinController.parseProfilePdf
+);
+
 router.get('/api/linkedin/buyers', authMiddleware, linkedinController.listBuyers);
 
 // Bulk delete -- ids se ya maujooda filter ke saath (all: true)
 router.post('/api/linkedin/buyers/bulk-delete', authMiddleware, linkedinController.bulkDeleteBuyers);
+
+// Kai buyers par ek hi kaam -- "in sab ne accept kar liya"
+router.post('/api/linkedin/buyers/bulk-activity', authMiddleware, linkedinController.bulkLogActivity);
 router.post('/api/linkedin/buyers', authMiddleware, linkedinController.createBuyer);
 
 router.get('/api/linkedin/buyers/:id', authMiddleware, linkedinController.getBuyer);

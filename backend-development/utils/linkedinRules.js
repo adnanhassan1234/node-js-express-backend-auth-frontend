@@ -63,12 +63,67 @@ const BUYER_TYPES = [
 const ACTIVITY_TYPES = [
   'requestSent',
   'accepted',
+
+  /**
+   * Hamara bheja hua message -- unka jawab NAHI.
+   *
+   * Pehle Step 2 seedha 'conversation' likhta tha, yani manager ki report me
+   * "Real conversations" barh jati thi mehaz is liye ke humne message bheja.
+   * Guftagu do taraf se hoti hai: 'conversation' sirf tab likhi jati hai jab
+   * buyer khud jawab de.
+   */
+  'messageSent',
+
   'conversation',
   'mockupOffered',
   'mockupSent',
   'sampleOrdered',
   'bulkQuoteSent',
 ];
+
+/**
+ * Table ke Action column ke liye: har stage par agla ek kaam.
+ *
+ * Maqsad: rozana ka kaam ek click me. Pehle "unhone accept kar li" likhne ke
+ * liye buyer ka modal kholna, stage dhoondna aur save karna parta tha -- aur
+ * ye cheez din me kai dafa hoti hai.
+ *
+ * Sirf wo qadam yahan hain jinke saath ek activity juri hai. 'Won' / 'Lost'
+ * jaisa faisla jaan boojh kar shamil nahi: wo soch kar lagana chahiye, ek
+ * click me nahi, aur uski koi ginti bhi nahi hoti.
+ */
+const NEXT_ACTION = {
+  'Request Sent': {
+    label: 'Accept ho gaya',
+    hint: 'Unhone connection accept kar li — stage Connected ho jayega',
+    activity: 'accepted',
+    stage: 'Connected',
+  },
+  Connected: {
+    label: 'Reply aaya',
+    hint: 'Unhone khud jawab diya — yehi "Real conversation" ginti jati hai',
+    activity: 'conversation',
+    stage: 'In Conversation',
+  },
+  'In Conversation': {
+    label: 'Mock-up bheja',
+    hint: 'Mock-up bhej diya — stage Mock-up Sent ho jayega',
+    activity: 'mockupSent',
+    stage: 'Mock-up Sent',
+  },
+  'Mock-up Sent': {
+    label: 'Sample order',
+    hint: '$200 ka sample order mil gaya',
+    activity: 'sampleOrdered',
+    stage: 'Sample Ordered',
+  },
+  'Sample Ordered': {
+    label: 'Bulk quote bheji',
+    hint: 'Poori team ke order ka quote bhej diya',
+    activity: 'bulkQuoteSent',
+    stage: 'Bulk Quote Sent',
+  },
+};
 
 /** Stage badalne par khud ba khud kaunsi activity likhi jaye */
 const STAGE_ACTIVITY = {
@@ -84,6 +139,7 @@ const STAGE_ACTIVITY = {
 const ACTIVITY_LABELS = {
   requestSent: 'Connection requests sent',
   accepted: 'Accepted',
+  messageSent: 'Messages sent (hamare)',
   conversation: 'Real conversations',
   mockupOffered: 'Mock-ups offered',
   mockupSent: 'Mock-ups sent',
@@ -148,8 +204,14 @@ const OUTREACH_STEPS = [
     key: 'step2',
     label: 'Step 2 — Shukriya + ek sawal',
     when: 'Accept hone ke 1–2 din baad',
-    activity: 'conversation',
-    stage: 'In Conversation',
+
+    /*
+     * Ye hamara message hai. Stage 'Connected' hi rehta hai aur ginti
+     * 'messageSent' me jati hai -- 'In Conversation' tab hoga jab unka
+     * jawab aayega.
+     */
+    activity: 'messageSent',
+    stage: null,
     body:
       'Thanks for connecting, [Name]. Quick question: when does [Club] usually ' +
       "sort out kits for the new season? I'm always curious how clubs plan it.",
@@ -176,7 +238,9 @@ const OUTREACH_STEPS = [
     key: 'step4',
     label: 'Step 4 — Ek kaam ki follow-up (7 din khamoshi ke baad)',
     when: '7 din jawab na aaye',
-    activity: null,
+
+    // Ye bhi hamara message hai -- pehle iska koi record nahi rakha jata tha
+    activity: 'messageSent',
     stage: null,
     body:
       'Hi [Name], I made a short guide on ordering youth kit sizes for U8–U16 ' +
@@ -440,6 +504,7 @@ module.exports = {
   ACTIVITY_TYPES,
   ACTIVITY_LABELS,
   STAGE_ACTIVITY,
+  NEXT_ACTION,
   WEEKLY_TARGETS,
   WEEKLY_REQUEST_LIMIT,
   WEEKLY_REQUEST_WARN,

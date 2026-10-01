@@ -1,5 +1,7 @@
 const XLSX = require('xlsx');
 
+const { parseProfilePdf: parseLinkedinPdf } = require('../utils/linkedinPdf');
+
 const {
   linkedinBuyerModel,
   askZainModel,
@@ -15,6 +17,7 @@ const {
   ACTIVITY_TYPES,
   ACTIVITY_LABELS,
   STAGE_ACTIVITY,
+  NEXT_ACTION,
   WEEKLY_TARGETS,
   WEEKLY_REQUEST_LIMIT,
   WEEKLY_REQUEST_WARN,
@@ -47,7 +50,7 @@ const fail = (res, error, status = 500) => {
 
 /** Query se buyers ka filter banata hai (list aur export dono isay use karte hain) */
 const buildBuyerQuery = (q = {}) => {
-  const { stage, country, buyerType, search, dueOnly } = q;
+  const { stage, country, buyerType, search, dueOnly, from, to } = q;
   const query = {};
 
   if (stage && stage !== 'All') {
@@ -62,6 +65,30 @@ const buildBuyerQuery = (q = {}) => {
   if (search) {
     const rx = new RegExp(String(search).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
     query.$or = [{ name: rx }, { company: rx }, { country: rx }, { jobTitle: rx }];
+  }
+
+  /**
+   * Last Contact ki tareekh ka arsa.
+   *
+   * `to` ko us din ke AAKHIR tak le jaya jata hai. Warna "1 Oct se 6 Oct"
+   * me 6 Oct ka kaam chhoot jata: us din ki aadhi raat ke baad ki har cheez
+   * bahar reh jati, aur rows ghaib lagti hain.
+   *
+   * `$ne: null` is liye ke jin se abhi raabta hi nahi hua, wo kisi arse me
+   * nahi aate.
+   */
+  if (from || to) {
+    const range = { $ne: null };
+
+    if (from) range.$gte = localDate(from);
+
+    if (to) {
+      const end = localDate(to);
+      end.setHours(23, 59, 59, 999);
+      range.$lte = end;
+    }
+
+    query.lastContactDate = range;
   }
 
   // Jin ka agla qadam aaj ya guzra hua hai
@@ -111,6 +138,7 @@ const getPlaybook = async (req, res) => {
         buyerTypes: BUYER_TYPES,
         activityTypes: ACTIVITY_TYPES,
         activityLabels: ACTIVITY_LABELS,
+        nextActions: NEXT_ACTION,
         weeklyTargets: WEEKLY_TARGETS,
         requestLimit: WEEKLY_REQUEST_LIMIT,
         requestWarn: WEEKLY_REQUEST_WARN,
@@ -186,6 +214,43 @@ const getBuyer = async (req, res) => {
   }
 };
 
+/**
+ * LinkedIn ke profile PDF se form bharne ke liye data.
+ *
+ * Kuch save NAHI hota -- sirf parh kar wapas bhej dete hain, aur frontend us
+ * se Add Buyer ka form bhar deta hai. Aadmi dekh kar theek karta hai, phir
+ * save dabata hai.
+ *
+ * Wajah: PDF ka dhancha har profile par thora alag hota hai, is liye andaze
+ * par seedha record banana theek nahi.
+ */
+const parseProfilePdf = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No file uploaded. The field name must be "file".',
+      });
+    }
+
+    const data = await parseLinkedinPdf(req.file.buffer);
+
+    if (!data.name && !data.linkedinUrl) {
+      return res.status(422).json({
+        success: false,
+        message:
+          'Is PDF me profile ka data nahi mila. LinkedIn par profile kholein → ' +
+          'More → Save to PDF, aur wahi file bhejein.',
+        data,
+      });
+    }
+
+    return res.status(200).json({ success: true, message: 'PDF parh li', data });
+  } catch (error) {
+    return fail(res, error);
+  }
+};
+
 const createBuyer = async (req, res) => {
   try {
     const p = req.body || {};
@@ -207,9 +272,14 @@ const createBuyer = async (req, res) => {
       linkedinUrl: p.linkedinUrl || '',
       email: p.email || '',
       stage: p.stage || 'Request Sent',
-      lastContactDate: p.lastContactDate ? new Date(p.lastContactDate) : new Date(),
+      /*
+       * localDate: "2026-10-06" ko LOCAL din maanta hai. new Date() usay UTC
+       * ki aadhi raat samajhti thi, jo yahan 6 Oct subah 5 baje ban jati --
+       * aur backup/restore ke baad din ek aage peechhe hone lagta tha.
+       */
+      lastContactDate: p.lastContactDate ? localDate(p.lastContactDate) : new Date(),
       nextStep: p.nextStep || '',
-      nextStepDate: p.nextStepDate ? new Date(p.nextStepDate) : null,
+      nextStepDate: p.nextStepDate ? localDate(p.nextStepDate) : null,
       notes: p.notes || '',
       contactId: p.contactId || null,
     });
@@ -245,11 +315,12 @@ const updateBuyer = async (req, res) => {
         if (p[f] !== undefined) buyer[f] = p[f];
       });
 
+    // Wahi wajah jo createBuyer me likhi hai -- local din, UTC nahi
     if (p.lastContactDate !== undefined) {
-      buyer.lastContactDate = p.lastContactDate ? new Date(p.lastContactDate) : null;
+      buyer.lastContactDate = p.lastContactDate ? localDate(p.lastContactDate) : null;
     }
     if (p.nextStepDate !== undefined) {
-      buyer.nextStepDate = p.nextStepDate ? new Date(p.nextStepDate) : null;
+      buyer.nextStepDate = p.nextStepDate ? localDate(p.nextStepDate) : null;
     }
 
     if (stageChanged) {
@@ -340,6 +411,71 @@ const logActivity = async (req, res) => {
  * `all` jaan boojh kar alag rakha hai: ye sainkron rows ek saath mita sakta
  * hai, is liye frontend pehle ginti dikha kar tasdeeq leta hai.
  */
+/**
+ * Kai buyers par ek hi kaam likhna -- "in 25 logon ne accept kar liya".
+ *
+ * Hafte me ~80 requests jati hain aur ~25 accept hoti hain. Har ek ka modal
+ * khol kar stage badalna bohat waqt leta tha, is liye ye raasta rakha hai.
+ *
+ * Yahan `all: true` jaan boojh kar NAHI rakha: filter ke saare rows ko ek
+ * saath accepted kar dena hafte ki ginti kharab kar deta hai, aur usay wapas
+ * karna aasan nahi. Ids saaf saaf chunni hongi.
+ */
+const bulkLogActivity = async (req, res) => {
+  try {
+    const { ids, type, stage, note } = req.body || {};
+
+    if (!ACTIVITY_TYPES.includes(type)) {
+      return res.status(400).json({
+        success: false,
+        message: `type must be one of: ${ACTIVITY_TYPES.join(', ')}`,
+      });
+    }
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, message: 'An "ids" array is required' });
+    }
+
+    const buyers = await linkedinBuyerModel.find({ _id: { $in: ids } });
+    const now = new Date();
+
+    let logged = 0;
+    let skipped = 0;
+
+    for (const buyer of buyers) {
+      // Wohi guard jo ek-ek par lagta hai -- aaj dobara na ginein
+      if (loggedToday(buyer, type)) {
+        skipped += 1;
+      } else {
+        buyer.activity.push({ type, at: now, note: note || '' });
+        logged += 1;
+      }
+
+      buyer.lastContactDate = now;
+
+      if (stage && STAGES.includes(stage) && stage !== buyer.stage) {
+        buyer.stage = stage;
+        buyer.color = colorForStage(stage);
+      }
+
+      await buyer.save();
+    }
+
+    const label = ACTIVITY_LABELS[type] || type;
+
+    return res.status(200).json({
+      success: true,
+      message:
+        logged + ' par "' + label + '" likha gaya' +
+        (skipped ? ', ' + skipped + ' aaj pehle hi likhe ja chuke the' : ''),
+      logged,
+      skipped,
+    });
+  } catch (error) {
+    return fail(res, error);
+  }
+};
+
 const bulkDeleteBuyers = async (req, res) => {
   try {
     const { ids, all } = req.body || {};
@@ -760,7 +896,7 @@ const deleteReport = async (req, res) => {
 
 const CSV_COLUMNS = [
   ['name', 'Name'],
-  ['company', 'Club / School / Shop'],
+  ['company', 'Organization'],
   ['country', 'Country'],
   ['buyerType', 'Buyer Type'],
   ['jobTitle', 'Job Title'],
@@ -821,6 +957,28 @@ const importBuyers = async (req, res) => {
     }
 
     const wb = XLSX.read(req.file.buffer, { type: 'buffer', cellDates: true });
+
+    /**
+     * Poora backup ghalti se Import me na chala jaye.
+     *
+     * Jaal ye tha: backup ki PEHLI sheet ka naam bhi "Buyers" hai, aur Import
+     * pehli hi sheet parhta hai. To file khushi se chal jati -- buyers ban
+     * jate, magar Activity, Ask Zain, Reports aur Daily chup chaap chhoot
+     * jate. Upar se har naye buyer par ek nayi (ghalat) activity lag jati,
+     * jis se hafte ki ginti kharab ho jati.
+     *
+     * Khamoshi se adhoora kaam karne se behtar hai saaf mana kar dena.
+     */
+    if (wb.SheetNames.includes('Activity') || wb.SheetNames.includes('Reports')) {
+      return res.status(400).json({
+        success: false,
+        message:
+          'Ye poora backup lagta hai (Activity/Reports sheets mojood hain). ' +
+          'Is ke liye Import nahi — RESTORE istemal karein, warna activity aur ' +
+          'reports chhoot jayengi.',
+      });
+    }
+
     const sheet = wb.Sheets[wb.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false, defval: '' });
 
@@ -953,7 +1111,7 @@ const backupAll = async (req, res) => {
       'Buyers',
       buyers.map((b) => ({
         Name: b.name,
-        Club: b.company || '',
+        Organization: b.company || '',
         Country: b.country || '',
         'Buyer Type': b.buyerType,
         'Job Title': b.jobTitle || '',
@@ -976,7 +1134,7 @@ const backupAll = async (req, res) => {
       (b.activity || []).forEach((a) => {
         activityRows.push({
           Buyer: b.name,
-          Club: b.company || '',
+          Organization: b.company || '',
           Type: a.type,
           At: stamp(a.at),
           Note: a.note || '',
@@ -1081,10 +1239,17 @@ const restoreAll = async (req, res) => {
 
     const key = (name, club) => norm(name) + '|' + norm(club);
 
+    /**
+     * Purani backup files me is column ka naam "Club" tha, nayi me
+     * "Organization". Dono parhte hain -- warna purani file se restore karne
+     * par activity kisi buyer se jurti hi nahi aur gum ho jati.
+     */
+    const orgOf = (row) => row.Organization || row.Club || '';
+
     /* Activity ko buyer ke hisaab se jama kar lo */
     const byBuyer = new Map();
     sheet('Activity').forEach((a) => {
-      const k = key(a.Buyer, a.Club);
+      const k = key(a.Buyer, orgOf(a));
       if (!byBuyer.has(k)) byBuyer.set(k, []);
 
       byBuyer.get(k).push({
@@ -1105,7 +1270,7 @@ const restoreAll = async (req, res) => {
       const name = String(row.Name || '').trim();
       if (!name) continue;
 
-      const club = String(row.Club || '').trim();
+      const club = String(orgOf(row)).trim();
       const k = key(name, club);
 
       const stage = String(row.Stage || '').trim();
@@ -1255,10 +1420,12 @@ module.exports = {
   listBuyers,
   getBuyer,
   createBuyer,
+  parseProfilePdf,
   updateBuyer,
   deleteBuyer,
   bulkDeleteBuyers,
   logActivity,
+  bulkLogActivity,
   getStats,
   getDay,
   updateDay,

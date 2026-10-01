@@ -220,7 +220,7 @@ const LiReport = ({ playbook, week = '', onWeekChange }) => {
             <label className="label">Best conversation this week</label>
             <input
               className="input"
-              placeholder="Club, mulk, aur unhein kya chahiye"
+              placeholder="Organization, mulk, aur unhein kya chahiye"
               value={best}
               onChange={(e) => setBest(e.target.value)}
             />

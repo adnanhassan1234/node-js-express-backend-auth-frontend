@@ -1,6 +1,13 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { LuCopy, LuCheck, LuLanguages, LuSend } from 'react-icons/lu';
+import {
+  LuCopy,
+  LuCheck,
+  LuLanguages,
+  LuSend,
+  LuMessageCircleReply,
+  LuUserCheck,
+} from 'react-icons/lu';
 
 import { linkedinApi } from '../../api/endpoints';
 import { getErrorMessage } from '../../api/client';
@@ -12,6 +19,33 @@ import { getErrorMessage } from '../../api/client';
  * hain. "Mark as sent" us buyer ke khilaf record likh deta hai — yahin se
  * hafte wali report ki ginti banti hai.
  */
+
+/**
+ * "Unka jawab aa gaya" -- steps ki list me nahi, kyunke iska koi template
+ * nahi hai. Ye wo lamha hai jab guftagu asal me shuru hoti hai, aur sirf
+ * yehi "Real conversation" ginti jata hai.
+ */
+const REPLY_STEP = {
+  key: 'reply',
+  label: 'Unhone jawab diya',
+  activity: 'conversation',
+  stage: 'In Conversation',
+};
+
+/**
+ * "Unhone connection accept kar li" -- ye bhi unka kaam hai, hamara nahi, is
+ * liye steps ki list me nahi.
+ *
+ * Pehle isay likhne ka sirf ek raasta tha: pipeline me buyer ka modal khol kar
+ * stage badalna. Is liye `accepted` ki ginti hamesha 0 rehti thi, halanke
+ * manager ki report me ye ahem number hai.
+ */
+const ACCEPT_STEP = {
+  key: 'accepted',
+  label: 'Connection accept hui',
+  activity: 'accepted',
+  stage: 'Connected',
+};
 
 /** Template me [Name] / [Club] bharta hai */
 const fill = (text, name, club) =>
@@ -94,7 +128,7 @@ const LiOutreach = ({ playbook, onChanged }) => {
       <div className="card p-4">
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
-            <label className="label">Buyer (pipeline se)</label>
+            <label className="label">Buyer (from pipeline)</label>
             <select className="input" value={buyerId} onChange={(e) => pickBuyer(e.target.value)}>
               <option value="">— chunein —</option>
               {buyers.map((b) => (
@@ -141,57 +175,118 @@ const LiOutreach = ({ playbook, onChanged }) => {
         const urdu = fill(step.urdu, name, club);
 
         return (
-          <div key={step.key} className="card p-5">
-            <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
-              <div>
-                <h3 className="text-sm font-bold text-slate-800">{step.label}</h3>
-                <p className="text-xs text-slate-500">{step.when}</p>
-              </div>
+          <Fragment key={step.key}>
+            <div className="card p-5">
+              <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800">{step.label}</h3>
+                  <p className="text-xs text-slate-500">{step.when}</p>
+                </div>
 
-              <div className="flex shrink-0 flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowUrdu((s) => ({ ...s, [step.key]: !s[step.key] }))}
-                  className="btn-secondary py-1 text-xs"
-                >
-                  <LuLanguages className="h-3.5 w-3.5" />
-                  {showUrdu[step.key] ? 'Hide Urdu' : 'Roman Urdu'}
-                </button>
-
-                <button type="button" onClick={() => copy(step.key, text)} className="btn-secondary py-1 text-xs">
-                  {copied === step.key ? <LuCheck className="h-3.5 w-3.5 text-green-600" /> : <LuCopy className="h-3.5 w-3.5" />}
-                  {copied === step.key ? 'Copied' : 'Copy'}
-                </button>
-
-                {step.activity && (
+                <div className="flex shrink-0 flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={() => markSent(step)}
-                    disabled={!buyerId || sending === step.key}
-                    title={buyerId ? 'Is buyer ke khilaf record likh do' : 'Pehle upar se buyer chunein'}
-                    className="btn-primary py-1 text-xs"
+                    onClick={() => setShowUrdu((s) => ({ ...s, [step.key]: !s[step.key] }))}
+                    className="btn-secondary py-1 text-xs"
                   >
-                    <LuSend className="h-3.5 w-3.5" />
-                    {sending === step.key ? 'Saving...' : 'Mark as sent'}
+                    <LuLanguages className="h-3.5 w-3.5" />
+                    {showUrdu[step.key] ? 'Hide Urdu' : 'Roman Urdu'}
                   </button>
-                )}
+
+                  <button type="button" onClick={() => copy(step.key, text)} className="btn-secondary py-1 text-xs">
+                    {copied === step.key ? <LuCheck className="h-3.5 w-3.5 text-green-600" /> : <LuCopy className="h-3.5 w-3.5" />}
+                    {copied === step.key ? 'Copied' : 'Copy'}
+                  </button>
+
+                  {step.activity && (
+                    <button
+                      type="button"
+                      onClick={() => markSent(step)}
+                      disabled={!buyerId || sending === step.key}
+                      title={buyerId ? 'Is buyer ke khilaf record likh do' : 'Pehle upar se buyer chunein'}
+                      className="btn-primary py-1 text-xs"
+                    >
+                      <LuSend className="h-3.5 w-3.5" />
+                      {sending === step.key ? 'Saving...' : 'Mark as sent'}
+                    </button>
+                  )}
+                </div>
               </div>
+
+              <p className="whitespace-pre-wrap rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm leading-relaxed text-slate-800">
+                {text}
+              </p>
+
+              {showUrdu[step.key] && (
+                <p className="mt-2 whitespace-pre-wrap rounded-lg border border-brand-200 bg-brand-50 p-3 text-sm leading-relaxed text-slate-700">
+                  {urdu}
+                </p>
+              )}
+
+              {step.note && (
+                <p className="mt-2 rounded bg-amber-50 p-2 text-xs font-medium text-amber-800">{step.note}</p>
+              )}
             </div>
 
-            <p className="whitespace-pre-wrap rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm leading-relaxed text-slate-800">
-              {text}
-            </p>
+            {/*
+              Step 2 ke foran baad, kyunke asal me yahi agla waqia hota hai:
+              humne message bheja, ab unke jawab ka intezar hai. Isay steps ki
+              list me na rakhne ki wajah ye hai ke ye hamara kaam nahi -- unka
+              hai, aur iska koi template nahi.
+            */}
+            {/* Request bhejne ke baad ka agla waqia: unhone accept kiya */}
+            {step.key === 'step1b' && (
+              <div className="card border-l-4 border-l-blue-500 p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800">Unhone accept kar li?</h3>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      Stage <strong>Connected</strong> ho jayega aur report me &quot;Accepted&quot; ki
+                      ginti barhegi. Ek saath kai logon ko lagana ho to{' '}
+                      <strong>Pipeline</strong> tab me unke checkbox lagayein — wahan ek hi button se
+                      sab ho jate hain.
+                    </p>
+                  </div>
 
-            {showUrdu[step.key] && (
-              <p className="mt-2 whitespace-pre-wrap rounded-lg border border-brand-200 bg-brand-50 p-3 text-sm leading-relaxed text-slate-700">
-                {urdu}
-              </p>
+                  <button
+                    type="button"
+                    onClick={() => markSent(ACCEPT_STEP)}
+                    disabled={!buyerId || sending === ACCEPT_STEP.key}
+                    title={buyerId ? 'Accepted likho aur stage Connected karo' : 'Pehle upar se buyer chunein'}
+                    className="btn-primary shrink-0 py-1 text-xs"
+                  >
+                    <LuUserCheck className="h-3.5 w-3.5" />
+                    {sending === ACCEPT_STEP.key ? 'Saving...' : 'Accept ho gaya'}
+                  </button>
+                </div>
+              </div>
             )}
 
-            {step.note && (
-              <p className="mt-2 rounded bg-amber-50 p-2 text-xs font-medium text-amber-800">{step.note}</p>
+            {step.key === 'step2' && (
+              <div className="card border-l-4 border-l-green-500 p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800">Unka jawab aa gaya?</h3>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      Sirf tab dabayein jab buyer ne <strong>khud</strong> reply kiya ho. Report me
+                      &quot;Real conversations&quot; ki ginti yehi hai — hamare bheje hue messages nahi.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => markSent(REPLY_STEP)}
+                    disabled={!buyerId || sending === REPLY_STEP.key}
+                    title={buyerId ? 'Real conversation likho aur stage In Conversation karo' : 'Pehle upar se buyer chunein'}
+                    className="btn-primary shrink-0 border-green-600 bg-green-600 py-1 text-xs hover:bg-green-700"
+                  >
+                    <LuMessageCircleReply className="h-3.5 w-3.5" />
+                    {sending === REPLY_STEP.key ? 'Saving...' : 'Reply aaya'}
+                  </button>
+                </div>
+              </div>
             )}
-          </div>
+          </Fragment>
         );
       })}
     </div>

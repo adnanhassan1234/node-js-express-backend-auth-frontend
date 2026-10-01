@@ -93,7 +93,7 @@ const LiAskZain = ({ onChanged }) => {
 
         <div className="grid gap-3 sm:grid-cols-4">
           <div className="sm:col-span-2">
-            <label className="label">Sawal *</label>
+            <label className="label">Question *</label>
             <input
               className="input"
               placeholder="15 kits ki qeemat kya hogi?"
@@ -114,7 +114,7 @@ const LiAskZain = ({ onChanged }) => {
           </div>
 
           <div>
-            <label className="label">Kis baare me</label>
+            <label className="label">Topic</label>
             <select
               className="input"
               value={form.topic}
