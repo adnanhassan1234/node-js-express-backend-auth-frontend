@@ -9,6 +9,8 @@ import {
   LuUserCheck,
 } from 'react-icons/lu';
 
+import SearchSelect from '../SearchSelect';
+
 import { linkedinApi } from '../../api/endpoints';
 import { getErrorMessage } from '../../api/client';
 
@@ -47,6 +49,15 @@ const ACCEPT_STEP = {
   stage: 'Connected',
 };
 
+/**
+ * Ek dafa me itne buyers aate hain.
+ *
+ * Search isi lai hui list par chalti hai, server par nahi -- is liye hadd ka
+ * pata hona zaroori hai. Is se zyada ho jayen to dropdown ke neeche saaf likh
+ * diya jata hai, taake aisa na lage ke koi buyer gayab ho gaya.
+ */
+const BUYER_LIMIT = 500;
+
 /** Template me [Name] / [Club] bharta hai */
 const fill = (text, name, club) =>
   text.replace(/\[Name\]/g, name || '[Name]').replace(/\[Club\]/g, club || '[Club]');
@@ -65,7 +76,7 @@ const LiOutreach = ({ playbook, onChanged }) => {
   /* Buyer chunne ke liye list -- active pipeline kaafi hai */
   useEffect(() => {
     linkedinApi
-      .buyers({ limit: 200, sortBy: 'name', sortDir: 'asc' })
+      .buyers({ limit: BUYER_LIMIT, sortBy: 'name', sortDir: 'asc' })
       .then((res) => setBuyers(res.data.data))
       .catch(() => {
         /* list na mile to bhi templates copy ho sakte hain */
@@ -129,15 +140,31 @@ const LiOutreach = ({ playbook, onChanged }) => {
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
             <label className="label">Buyer (from pipeline)</label>
-            <select className="input" value={buyerId} onChange={(e) => pickBuyer(e.target.value)}>
-              <option value="">— chunein —</option>
-              {buyers.map((b) => (
-                <option key={b._id} value={b._id}>
-                  {b.name}
-                  {b.company ? ' · ' + b.company : ''}
-                </option>
-              ))}
-            </select>
+
+            {/*
+              Search wala dropdown, saada <select> nahi: pipeline barhti rehti
+              hai aur 100 naamon me scroll kar ke dhoondna aziyat hai.
+
+              hint me club aur stage dono hain, aur search unme bhi dekhti hai
+              -- yani "Bolton" ya "Connected" likh kar bhi buyer mil jata hai.
+            */}
+            <SearchSelect
+              value={buyerId}
+              onChange={pickBuyer}
+              placeholder="— buyer chunein —"
+              searchPlaceholder="Naam, organization ya stage likhein…"
+              emptyText="Koi buyer nahi mila"
+              options={buyers.map((b) => ({
+                value: b._id,
+                label: b.name,
+                hint: [b.company, b.stage].filter(Boolean).join(' · '),
+              }))}
+              footer={
+                buyers.length >= BUYER_LIMIT
+                  ? 'Sirf pehle ' + BUYER_LIMIT + ' buyers — baqi Pipeline tab se khulenge'
+                  : buyers.length + ' buyers'
+              }
+            />
           </div>
 
           <div>
