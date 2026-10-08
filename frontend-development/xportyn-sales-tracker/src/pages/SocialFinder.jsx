@@ -8,10 +8,12 @@ import {
   LuExternalLink,
   LuGlobe,
   LuHash,
+  LuMessageSquare,
 } from 'react-icons/lu';
 
 import {
   ROLES,
+  COMMENT_TEMPLATES,
   SEARCH_WORDS,
   PLACES,
   HASHTAGS,
@@ -312,6 +314,65 @@ const SocialFinder = () => {
             Google se
           </a>
         </div>
+      </div>
+
+      {/* ---------------- Post par comment ---------------- */}
+      <div className="card p-5">
+        <div className="mb-1 flex items-center gap-2">
+          <LuMessageSquare className="h-5 w-5 text-slate-600" />
+          <h3 className="text-sm font-bold text-slate-800">Post par comment</h3>
+        </div>
+        <p className="mb-3 text-xs text-slate-500">
+          Club ya academy ki post ke neeche likhne ke liye tayyar jumle. Copy karein, paste karein.
+        </p>
+
+        {/*
+          Ye sirf mashwara nahi -- yehi faisla karta hai ke comment chalta hai
+          ya account par pabandi lagti hai. Ek hi jumla har post par chipkana
+          dono platforms spam ginte hain, is liye saat alag mauqon ke saat
+          alag jumle rakhe hain.
+        */}
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50/70 p-2.5">
+          <p className="text-xs font-bold text-amber-900">Ek hi comment har jagah na lagayein</p>
+          <p className="mt-0.5 text-[11px] leading-relaxed text-amber-800">
+            Facebook aur Instagram dono ek jaisa comment baar baar dekh kar usay{' '}
+            <strong>spam</strong> gin lete hain — comment chhup jata hai aur account par hadd lag
+            jati hai. Har post ke mauqe ke mutabiq alag jumla chunein, aur{' '}
+            <strong>do-ek lafz apne se badal dein</strong> (club ka naam, rang) — is se comment asli
+            lagta hai aur kaam bhi behtar karta hai.
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          {COMMENT_TEMPLATES.map((c) => (
+            <div key={c.key} className="rounded-lg border border-slate-200 p-3">
+              <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-bold text-slate-700">{c.when}</p>
+
+                <button
+                  type="button"
+                  onClick={() => copy('c-' + c.key, c.text)}
+                  className="btn-secondary shrink-0 py-1 text-xs"
+                >
+                  {copied === 'c-' + c.key
+                    ? <LuCheck className="h-3.5 w-3.5 text-green-600" />
+                    : <LuCopy className="h-3.5 w-3.5" />}
+                  {copied === 'c-' + c.key ? 'Copied' : 'Copy'}
+                </button>
+              </div>
+
+              <p className="rounded bg-slate-50 p-2.5 text-sm leading-relaxed text-slate-800">
+                {c.text}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
+          In me qeemat ya minimum order jaan boojh kar nahi likha — wo har order par alag hota hai,
+          aur comment me ghalat number likhna baad me mushkil banata hai. Free mock-up ki peshkash
+          wahi hai jo playbook me manzoor shuda hai.
+        </p>
       </div>
 
       {/* ---------------- Rozana ki hadd ---------------- */}

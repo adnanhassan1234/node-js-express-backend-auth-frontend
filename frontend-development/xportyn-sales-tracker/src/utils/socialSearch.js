@@ -178,3 +178,77 @@ export const googleSiteUrl = (site, terms = []) => {
 
   return 'https://www.google.com/search?q=' + q(parts.join(' '));
 };
+
+/**
+ * Post ke neeche comment karne ke liye tayyar jumle.
+ *
+ * Maqsad: kisi academy/club ki post par kaam ki baat likh kar baat shuru
+ * karna -- ishtihaar chipkana nahi.
+ *
+ * Do usool jin par ye likhe gaye hain:
+ *
+ *   1. Pehle UNKI post ki taareef, phir apni baat. Seedha "hum kit banate
+ *      hain" likhne par comment delete ho jata hai aur banda block.
+ *   2. Har mauqe ka apna jumla. Ek hi comment har post par chipkana sab se
+ *      bara khatra hai -- Facebook aur Instagram dono usay spam ginte hain.
+ *
+ * Qeemat aur MOQ jaan boojh kar kisi me nahi likhi: wo har order par alag
+ * hoti hai, aur comment me ghalat number likhna baad me mushkil banata hai.
+ * Free mock-up ki peshkash wahi hai jo playbook me manzoor shuda hai.
+ */
+export const COMMENT_TEMPLATES = [
+  {
+    key: 'newkit',
+    when: 'Nayi kit ya jersey ki tasveer par',
+    text:
+      'Great kit! 🔥 Quick question — is your club looking at custom uniforms for next ' +
+      'season? We manufacture direct from our factory and can put together a free mock-up ' +
+      'in your colours. No obligation.',
+  },
+  {
+    key: 'win',
+    when: 'Match jeetne ya natije ki post par',
+    text:
+      'Congrats on the win! 👏 If new kit is on the list for next season, happy to send a ' +
+      'free design mock-up in your colours — straight from our factory, no obligation.',
+  },
+  {
+    key: 'academy',
+    when: 'Academy, trials ya training ki post par',
+    text:
+      'Looks like a brilliant setup ⚽ If you ever need training kit or matchday sets for ' +
+      'the squad, we make custom teamwear direct from our factory. Happy to help whenever ' +
+      'you need it.',
+  },
+  {
+    key: 'sponsor',
+    when: 'Sponsor ya fundraising maangne wali post par',
+    text:
+      'Great cause 👏 If kit is part of what you are raising for, we supply custom kits ' +
+      'direct from our factory — happy to put together a free mock-up and a price so you ' +
+      'know where you stand.',
+  },
+  {
+    key: 'quote',
+    when: 'Jab wo khud kit ya supplier ki baat kar rahe hon',
+    text:
+      'Happy to help with this — we manufacture custom kits direct from our factory: ' +
+      'jerseys, shorts, socks and training wear. Send us your crest and colours and we will ' +
+      'come back with a free mock-up and a quote.',
+  },
+  {
+    key: 'light',
+    when: 'Halka sa — jab ziyada baat nahi karni',
+    text:
+      'Love the colours ⚽ We make custom kits — if you ever want a free mock-up in these ' +
+      'colours, just say the word.',
+  },
+  {
+    key: 'recommend',
+    when: 'Jab koi supplier ka mashwara maang raha ho',
+    text:
+      'We manufacture custom kits direct from our factory in Sialkot — jerseys, shorts, ' +
+      'socks and training wear. Happy to send a free mock-up in your colours so you can see ' +
+      'the quality before deciding.',
+  },
+];
