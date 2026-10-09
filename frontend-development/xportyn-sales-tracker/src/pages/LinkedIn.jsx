@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import {
   LuLayoutDashboard,
   LuUsers,
+  LuCalendarClock,
   LuSend,
   LuMessageCircle,
   LuListChecks,
@@ -20,6 +21,7 @@ import Spinner from '../components/Spinner';
 
 import LiDashboard from '../components/linkedin/LiDashboard';
 import LiPipeline from '../components/linkedin/LiPipeline';
+import LiFollowUps from '../components/linkedin/LiFollowUps';
 import LiOutreach from '../components/linkedin/LiOutreach';
 import LiReplyGuide from '../components/linkedin/LiReplyGuide';
 import LiRoutine from '../components/linkedin/LiRoutine';
@@ -44,6 +46,7 @@ import LiRules from '../components/linkedin/LiRules';
 const TABS = [
   { key: 'dashboard', label: 'Dashboard', Icon: LuLayoutDashboard },
   { key: 'pipeline', label: 'Pipeline', Icon: LuUsers },
+  { key: 'followups', label: 'Follow-ups', Icon: LuCalendarClock },
   { key: 'outreach', label: 'Outreach', Icon: LuSend },
   { key: 'replies', label: 'Reply Guide', Icon: LuMessageCircle },
   { key: 'routine', label: 'Daily Routine', Icon: LuListChecks },
@@ -80,14 +83,14 @@ const LinkedIn = () => {
   }, []);
 
   /* Dashboard aur Ask Zain ka badge -- pending sawal aur due buyers */
-  const [badges, setBadges] = useState({ pendingZain: 0, dueToday: 0, overdue: 0 });
+  const [badges, setBadges] = useState({ pendingZain: 0, dueToday: 0, overdue: 0, dueSoon: 0 });
 
   const refreshBadges = useCallback(() => {
     linkedinApi
       .stats()
       .then((res) => {
         const d = res.data.data;
-        setBadges({ pendingZain: d.pendingZain, dueToday: d.dueToday, overdue: d.overdue });
+        setBadges({ pendingZain: d.pendingZain, dueToday: d.dueToday, overdue: d.overdue, dueSoon: d.dueSoon });
       })
       .catch(() => {
         /* Chup chaap -- badge na dikhe to bhi page chalta rahe */
@@ -123,6 +126,7 @@ const LinkedIn = () => {
 
   const badgeFor = (key) => {
     if (key === 'askzain' && badges.pendingZain) return badges.pendingZain;
+    if (key === 'followups' && badges.dueSoon) return badges.dueSoon;
     if (key === 'pipeline' && badges.dueToday + badges.overdue) return badges.dueToday + badges.overdue;
     return null;
   };
@@ -178,6 +182,7 @@ const LinkedIn = () => {
         <LiDashboard {...shared} onGoTab={goTab} week={week} onWeekChange={setWeek} />
       )}
       {tab === 'pipeline' && <LiPipeline {...shared} />}
+      {tab === 'followups' && <LiFollowUps {...shared} />}
       {tab === 'outreach' && <LiOutreach {...shared} />}
       {tab === 'replies' && <LiReplyGuide {...shared} />}
       {tab === 'routine' && <LiRoutine {...shared} />}

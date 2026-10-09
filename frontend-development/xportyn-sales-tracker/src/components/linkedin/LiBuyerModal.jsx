@@ -26,12 +26,24 @@ const toDateInput = (v) => {
 };
 
 /**
- * Naya buyer add karte waqt agla qadam kitne din baad aata hai.
+ * Kis stage par agla qadam kitne din baad.
  *
- * 5 is liye ke 1 tareekh ko add karein to 6 tareekh aaye -- yehi mamool hai.
- * Badalna ho to bas ye number badal dein.
+ *   Request Sent -> KHALI. Is waqt karne ko kuch hai hi nahi; gend unke
+ *                   paalay me hai. Aur 3 hafte me accept na ho to wo khud
+ *                   "Withdrawn" ho jati hai -- us ke liye tareekh ki zarurat
+ *                   nahi. Pehle yahan bhi 5 din lag jate the, jis se har nayi
+ *                   request bewajah "due" ki list me aa jati thi.
+ *
+ *   Connected    -> 5 din. Is darmiyan Step 2 ka message bhejna hota hai.
+ *
+ * Jis stage ka yahan zikr nahi (In Conversation, Mock-up Sent...) us par
+ * tareekh ko HAATH NAHI lagta -- wahan tak pohanchne wale buyer ki apni
+ * tareekh aksar pehle se tay hoti hai, aur usay mitana nuqsan hai.
  */
-const NEXT_STEP_DAYS = 5;
+const FALLBACK_NEXT_STEP_DAYS = {
+  'Request Sent': null,
+  Connected: 5,
+};
 
 /** Aaj se N din aage ka din */
 const dayFromToday = (n) => {
@@ -54,7 +66,9 @@ const emptyForm = () => ({
   // Buyer aam tor par usi din add hota hai jis din request bheji jati hai
   lastContactDate: dayFromToday(0),
   nextStep: '',
-  nextStepDate: dayFromToday(NEXT_STEP_DAYS),
+
+  // Shuru me stage "Request Sent" hota hai -- yani tareekh khali
+  nextStepDate: '',
   notes: '',
 });
 
@@ -66,10 +80,19 @@ const emptyForm = () => ({
 const LiBuyerModal = ({ buyerId, playbook, onClose, onSaved, onDeleted }) => {
   const isNew = !buyerId;
 
+  /*
+   * Numbers backend se aate hain (playbook me), taake table aur modal dono
+   * ek hi usool par chalein. Playbook purani ho to niche wali list chalti hai.
+   */
+  const stageDays = playbook.nextStepDays || FALLBACK_NEXT_STEP_DAYS;
+
   const [form, setForm] = useState(emptyForm);
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
+
+  /* Aadmi ne tareekh khud likh di? Phir default usay na mitaye. */
+  const [dateTouched, setDateTouched] = useState(false);
 
   /* LinkedIn ka profile PDF */
   const pdfRef = useRef(null);
@@ -186,6 +209,30 @@ const LiBuyerModal = ({ buyerId, playbook, onClose, onSaved, onDeleted }) => {
   }, [onClose]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  /**
+   * Stage badla -- tareekh us hisaab se bhar do.
+   *
+   * Do shartein hain, dono zaroori:
+   *
+   *   isNew       -> purane buyer ko badalte waqt uski tareekh khud se mat
+   *                  chhero; wo soch kar lagai gayi hogi.
+   *   !dateTouched -> aur agar is modal me aap ne khud tareekh likh di hai to
+   *                  bhi haath na lagao. Default tabhi tak default hai jab tak
+   *                  aadmi ne usay badla na ho.
+   */
+  const setStage = (stage) => {
+    setForm((f) => {
+      const next = { ...f, stage };
+
+      if (isNew && !dateTouched && Object.prototype.hasOwnProperty.call(stageDays, stage)) {
+        const days = stageDays[stage];
+        next.nextStepDate = days === null || days === undefined ? '' : dayFromToday(days);
+      }
+
+      return next;
+    });
+  };
 
   const handleSave = async () => {
     if (!form.name.trim()) {
@@ -383,7 +430,7 @@ const LiBuyerModal = ({ buyerId, playbook, onClose, onSaved, onDeleted }) => {
               </div>
               <div>
                 <label className="label">Stage</label>
-                <select className="input" value={form.stage} onChange={(e) => set('stage', e.target.value)}>
+                <select className="input" value={form.stage} onChange={(e) => setStage(e.target.value)}>
                   {playbook.stages.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
@@ -437,7 +484,10 @@ const LiBuyerModal = ({ buyerId, playbook, onClose, onSaved, onDeleted }) => {
                     type="date"
                     className="input"
                     value={form.nextStepDate}
-                    onChange={(e) => set('nextStepDate', e.target.value)}
+                    onChange={(e) => {
+                      setDateTouched(true);
+                      set('nextStepDate', e.target.value);
+                    }}
                   />
                 </div>
               </div>

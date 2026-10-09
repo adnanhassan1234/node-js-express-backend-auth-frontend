@@ -18,6 +18,8 @@ const {
   ACTIVITY_LABELS,
   STAGE_ACTIVITY,
   NEXT_ACTION,
+  NEXT_STEP_DAYS,
+  nextStepFor,
   WEEKLY_TARGETS,
   WEEKLY_REQUEST_LIMIT,
   WEEKLY_REQUEST_WARN,
@@ -50,7 +52,7 @@ const fail = (res, error, status = 500) => {
 
 /** Query se buyers ka filter banata hai (list aur export dono isay use karte hain) */
 const buildBuyerQuery = (q = {}) => {
-  const { stage, country, buyerType, search, dueOnly, from, to } = q;
+  const { stage, country, buyerType, search, dueOnly, dueDays, from, to } = q;
   const query = {};
 
   if (stage && stage !== 'All') {
@@ -89,6 +91,25 @@ const buildBuyerQuery = (q = {}) => {
     }
 
     query.lastContactDate = range;
+  }
+
+  /**
+   * Agla qadam kitne din ke andar.
+   *
+   * dueDays=2 ka matlab: guzar chuke + aaj + kal + parson -- yani theek wo
+   * sab jo table me laal nazar aate hain. Follow-ups wala tab isi par chalta
+   * hai.
+   */
+  if (dueDays !== undefined && dueDays !== '') {
+    const n = Number(dueDays);
+
+    if (Number.isFinite(n) && n >= 0) {
+      const until = new Date();
+      until.setDate(until.getDate() + n);
+      until.setHours(23, 59, 59, 999);
+
+      query.nextStepDate = { $ne: null, $lte: until };
+    }
   }
 
   // Jin ka agla qadam aaj ya guzra hua hai
@@ -139,6 +160,7 @@ const getPlaybook = async (req, res) => {
         activityTypes: ACTIVITY_TYPES,
         activityLabels: ACTIVITY_LABELS,
         nextActions: NEXT_ACTION,
+        nextStepDays: NEXT_STEP_DAYS,
         weeklyTargets: WEEKLY_TARGETS,
         requestLimit: WEEKLY_REQUEST_LIMIT,
         requestWarn: WEEKLY_REQUEST_WARN,
@@ -331,6 +353,16 @@ const updateBuyer = async (req, res) => {
       }
 
       if (!p.lastContactDate) buyer.lastContactDate = new Date();
+
+      /*
+       * Naye stage ki apni tareekh. Sirf tab jab bheji HI na gayi ho --
+       * modal apni tareekh khud bhejta hai aur usay chhedna ghalat hoga.
+       * Table ka Action dropdown sirf { stage } bhejta hai, to wahan ye
+       * khud lag jati hai.
+       */
+      if (p.nextStepDate === undefined) {
+        buyer.nextStepDate = nextStepFor(buyer.stage);
+      }
     }
 
     await buyer.save();
@@ -385,6 +417,16 @@ const logActivity = async (req, res) => {
       buyer.stage = stage;
       buyer.color = colorForStage(stage);
     }
+
+    /*
+     * Kaam ho gaya -- ab agla qadam kab. Ye har dafa nayi lagti hai, chahe
+     * stage badla ho ya nahi: "Mark as sent" ka matlab hi yehi hai ke kaam
+     * aaj hua, to agla dekhna aaj se ginna chahiye.
+     *
+     * Pehle ye chhooti hi nahi thi, is liye accept ke baad table me Next Step
+     * ka khana khali para rehta tha aur buyer nazar se gir jata tha.
+     */
+    buyer.nextStepDate = nextStepFor(buyer.stage);
 
     await buyer.save();
 
@@ -457,6 +499,9 @@ const bulkLogActivity = async (req, res) => {
         buyer.stage = stage;
         buyer.color = colorForStage(stage);
       }
+
+      // Wahi usool jo ek-ek par lagta hai
+      buyer.nextStepDate = nextStepFor(buyer.stage, now);
 
       await buyer.save();
     }
@@ -548,9 +593,15 @@ const getStats = async (req, res) => {
     const endOfToday = new Date();
     endOfToday.setHours(23, 59, 59, 999);
 
-    const [dueToday, overdue, pendingZain] = await Promise.all([
+    /* Follow-ups tab ke liye: do din ke andar ka sab kuch */
+    const inTwoDays = new Date();
+    inTwoDays.setDate(inTwoDays.getDate() + 2);
+    inTwoDays.setHours(23, 59, 59, 999);
+
+    const [dueToday, overdue, dueSoon, pendingZain] = await Promise.all([
       linkedinBuyerModel.countDocuments({ nextStepDate: { $gte: startOfToday, $lte: endOfToday } }),
       linkedinBuyerModel.countDocuments({ nextStepDate: { $ne: null, $lt: startOfToday } }),
+      linkedinBuyerModel.countDocuments({ nextStepDate: { $ne: null, $lte: inTwoDays } }),
       askZainModel.countDocuments({ status: 'Pending' }),
     ]);
 
@@ -592,6 +643,7 @@ const getStats = async (req, res) => {
 
         dueToday,
         overdue,
+        dueSoon,
         pendingZain,
       },
     });

@@ -51,6 +51,18 @@ const STAGE_STYLES = {
     badge: 'bg-red-200 text-red-800',
     hex: '#ef4444',
   },
+
+  /*
+   * Withdrawn: 3 hafte me request accept na hui.
+   *
+   * Jaan boojh kar halka slate -- Lost ki tarah laal nahi. Kuch haara nahi,
+   * baat shuru hi nahi hui; laal rang isay nakami dikhata jo ghalat hai.
+   */
+  Withdrawn: {
+    row: 'bg-slate-50 hover:bg-slate-100',
+    badge: 'bg-slate-200 text-slate-500',
+    hex: '#cbd5e1',
+  },
 };
 
 const FALLBACK = {

@@ -25,10 +25,19 @@ const STAGES = [
   'Won',
   'Not now',
   'Lost',
+
+  /**
+   * Request bheji, 3 hafte guzar gaye, accept nahi hui.
+   *
+   * "Lost" nahi kaha kyunke kuch haara nahi -- baat shuru hi nahi hui. Aur
+   * "Not now" bhi nahi, wo unka jawab hota hai. Ye sirf ek khamosh request
+   * hai jo ab band ki ja rahi hai.
+   */
+  'Withdrawn',
 ];
 
 /** Jin stages par baat khatam ho chuki hai */
-const CLOSED_STAGES = ['Won', 'Not now', 'Lost'];
+const CLOSED_STAGES = ['Won', 'Not now', 'Lost', 'Withdrawn'];
 
 /** Stage -> rang (frontend wahi naam istemal karta hai jo contacts me hain) */
 const STAGE_COLORS = {
@@ -41,6 +50,9 @@ const STAGE_COLORS = {
   Won: 'green',
   'Not now': 'yellow',
   Lost: 'red',
+
+  // Slate -- ye nuqsan nahi, bas khamoshi hai. Laal rang ghalat paigham deta.
+  Withdrawn: 'slate',
 };
 
 const BUYER_TYPES = [
@@ -95,7 +107,7 @@ const ACTIVITY_TYPES = [
 const NEXT_ACTION = {
   'Request Sent': {
     label: 'Accept ho gaya',
-    hint: 'Unhone connection accept kar li — stage Connected ho jayega',
+    hint: 'Unhone connection accept kar li — stage Connected ho jayega. (3 hafte baad ye khud "Withdrawn" ho jati hai)',
     activity: 'accepted',
     stage: 'Connected',
   },
@@ -123,6 +135,49 @@ const NEXT_ACTION = {
     activity: 'bulkQuoteSent',
     stage: 'Bulk Quote Sent',
   },
+};
+
+/**
+ * Kaam hone ke baad agla qadam kitne din baad dekhna hai.
+ *
+ * Matlab hamesha ek hi hai: "is buyer ko dobara kitne din baad dekhna hai".
+ * Tareekh har kaam ke baad aaj se nayi lagti hai, is liye jo buyer chal raha
+ * ho wo kabhi nazar se nahi girta.
+ *
+ * null ka matlab KOI tareekh nahi:
+ *   Request Sent  -> gend unke paalay me hai, karne ko kuch nahi (aur 3 hafte
+ *                    baad wo khud "Withdrawn" ho jati hai)
+ *   Won/Lost/...  -> baat khatam, usay "due" ki list me rakhna jhooti ginti hai
+ */
+const NEXT_STEP_DAYS = {
+  'Request Sent': null,
+  Connected: 5,
+  'In Conversation': 3,
+  'Mock-up Sent': 5,
+  'Sample Ordered': 7,
+  'Bulk Quote Sent': 7,
+
+  Won: null,
+  'Not now': null,
+  Lost: null,
+  Withdrawn: null,
+};
+
+/**
+ * Stage ke hisaab se agli tareekh.
+ *
+ * Aadhi raat par set hoti hai -- ye din ki tareekh hai, waqt ki nahi. Isi se
+ * "2 din baqi" wala hisaab theek baithta hai.
+ */
+const nextStepFor = (stage, from = new Date()) => {
+  const days = NEXT_STEP_DAYS[stage];
+  if (days === null || days === undefined) return null;
+
+  const d = new Date(from);
+  d.setDate(d.getDate() + days);
+  d.setHours(0, 0, 0, 0);
+
+  return d;
 };
 
 /** Stage badalne par khud ba khud kaunsi activity likhi jaye */
@@ -505,6 +560,8 @@ module.exports = {
   ACTIVITY_LABELS,
   STAGE_ACTIVITY,
   NEXT_ACTION,
+  NEXT_STEP_DAYS,
+  nextStepFor,
   WEEKLY_TARGETS,
   WEEKLY_REQUEST_LIMIT,
   WEEKLY_REQUEST_WARN,

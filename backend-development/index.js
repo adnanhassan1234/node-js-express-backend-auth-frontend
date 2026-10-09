@@ -222,12 +222,16 @@ connectDB();
  */
 const { startReplyWatcher } = require('./config/replyWatcher');
 const { startFollowUpCloser } = require('./config/followUpCloser');
+const { startRequestWithdrawer } = require('./config/requestWithdrawer');
 
 app.set('io', io); // taake controller bhi khabar bhej sake
 startReplyWatcher(io);
 
 // Follow-up 2 ke chand din baad silsila khud band ho jata hai
 startFollowUpCloser();
+
+// 3 hafte purani LinkedIn requests khud "Withdrawn" kar deta hai
+startRequestWithdrawer();
 
 /* ================= SOCKET ================= */
 io.on('connection', (socket) => {

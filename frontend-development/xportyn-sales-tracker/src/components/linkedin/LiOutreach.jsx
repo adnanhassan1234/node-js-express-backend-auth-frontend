@@ -263,7 +263,7 @@ const LiOutreach = ({ playbook, onChanged }) => {
             */}
             {/* Request bhejne ke baad ka agla waqia: unhone accept kiya */}
             {step.key === 'step1b' && (
-              <div className="card border-l-4 border-l-blue-500 p-5">
+              <div className="card border border-orange-200 bg-orange-50 border-l-4 border-l-[#F87405] p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <h3 className="text-sm font-bold text-slate-800">Unhone accept kar li?</h3>
@@ -280,7 +280,8 @@ const LiOutreach = ({ playbook, onChanged }) => {
                     onClick={() => markSent(ACCEPT_STEP)}
                     disabled={!buyerId || sending === ACCEPT_STEP.key}
                     title={buyerId ? 'Accepted likho aur stage Connected karo' : 'Pehle upar se buyer chunein'}
-                    className="btn-primary shrink-0 py-1 text-xs"
+                    /* XPORTYN ka narangi -- btn-primary ka neela rang yahan hata diya */
+                    className="btn-primary shrink-0 bg-[#F87405] py-1 text-xs hover:bg-[#d96304] active:bg-[#b85203]"
                   >
                     <LuUserCheck className="h-3.5 w-3.5" />
                     {sending === ACCEPT_STEP.key ? 'Saving...' : 'Accept ho gaya'}
@@ -290,7 +291,7 @@ const LiOutreach = ({ playbook, onChanged }) => {
             )}
 
             {step.key === 'step2' && (
-              <div className="card border-l-4 border-l-green-500 p-5">
+              <div className="card border border-green-300 bg-green-50 border-l-4 border-l-green-500 p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <h3 className="text-sm font-bold text-slate-800">Unka jawab aa gaya?</h3>
