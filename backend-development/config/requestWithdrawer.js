@@ -55,7 +55,7 @@ const withdrawStaleRequests = async (options = {}) => {
   const days = Number(options.days ?? process.env.WITHDRAW_AFTER_DAYS ?? DEFAULT_DAYS);
 
   if (!days || days <= 0) {
-    return { ok: false, message: 'Auto withdraw band hai (WITHDRAW_AFTER_DAYS=0)' };
+    return { ok: false, message: 'Auto withdraw is off (WITHDRAW_AFTER_DAYS=0)' };
   }
 
   const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);

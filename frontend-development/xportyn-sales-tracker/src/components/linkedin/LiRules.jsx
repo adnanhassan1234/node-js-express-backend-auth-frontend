@@ -79,7 +79,7 @@ const LiRules = ({ playbook }) => {
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm font-bold text-slate-800">
-              Is hafte {requests.sent} / {requests.limit} connection requests
+              {requests.sent} / {requests.limit} connection requests this week
             </p>
             <p
               className={`text-sm font-semibold ${
@@ -91,7 +91,7 @@ const LiRules = ({ playbook }) => {
               }`}
             >
               {requests.state === 'blocked'
-                ? 'Hadd poori — is hafte aur na bhejein'
+                ? 'Limit reached — send no more this week'
                 : requests.left + ' baqi'}
             </p>
           </div>
@@ -105,7 +105,7 @@ const LiRules = ({ playbook }) => {
           Qawaid
         </h3>
         <p className="mb-4 text-xs text-slate-500">
-          Inhe torne se account band ho sakta hai ya XPORTYN spam lagegi.
+          Breaking these can get the account banned or make XPORTYN look like spam.
         </p>
 
         <ol className="space-y-2.5">
@@ -131,8 +131,8 @@ const LiRules = ({ playbook }) => {
         </div>
 
         <p className="mb-3 text-xs text-slate-500">
-          Khareedar accept karne se pehle profile dekhte hain — saaf nazar aana chahiye ke wo kis se
-          baat kar rahe hain.
+          Buyers check your profile before accepting — it should be obvious who they are
+          dealing with.
         </p>
 
         <ul className="space-y-2">
@@ -183,7 +183,7 @@ const LiRules = ({ playbook }) => {
         </ul>
 
         <p className="mt-3 border-t border-slate-200 pt-3 text-xs text-slate-400">
-          Ye checklist sirf is browser me mehfooz hai — ek dafa ka kaam hai.
+          This checklist is saved in this browser only — it is a one-time job.
         </p>
       </div>
     </div>

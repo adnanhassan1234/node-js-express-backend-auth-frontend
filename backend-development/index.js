@@ -223,6 +223,7 @@ connectDB();
 const { startReplyWatcher } = require('./config/replyWatcher');
 const { startFollowUpCloser } = require('./config/followUpCloser');
 const { startRequestWithdrawer } = require('./config/requestWithdrawer');
+const { startNoReplyCloser } = require('./config/noReplyCloser');
 
 app.set('io', io); // taake controller bhi khabar bhej sake
 startReplyWatcher(io);
@@ -232,6 +233,9 @@ startFollowUpCloser();
 
 // 3 hafte purani LinkedIn requests khud "Withdrawn" kar deta hai
 startRequestWithdrawer();
+
+// Do message ke baad khamosh connections khud "No Reply" ho jate hain
+startNoReplyCloser();
 
 /* ================= SOCKET ================= */
 io.on('connection', (socket) => {

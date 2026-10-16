@@ -17,6 +17,7 @@ const {
   ACTIVITY_TYPES,
   ACTIVITY_LABELS,
   STAGE_ACTIVITY,
+  STAGE_IMPLIES,
   NEXT_ACTION,
   NEXT_STEP_DAYS,
   nextStepFor,
@@ -26,6 +27,7 @@ const {
   MONTHLY_GOAL,
   OUTREACH_STEPS,
   REPLY_GUIDE,
+  RESOURCES,
   SEARCH_HELPER,
   EXTRA_SEARCH,
   DAILY_TASKS,
@@ -130,6 +132,31 @@ const buildBuyerQuery = (q = {}) => {
  * request do dafa gini jati aur hafte ki report jhooti ho jati. Ye guard usay
  * rokta hai, aur do dafa click ho jane se bhi bachata hai.
  */
+/**
+ * Ye kaam har buyer par zindagi me SIRF EK DAFA hota hai.
+ *
+ * Ek shakhs ko ek hi connection request jati hai, aur wo ek hi dafa accept
+ * karta hai. Baqi cheezein dohrai ja sakti hain -- Step 2 aur Step 4 dono
+ * `messageSent` hain aur dono ginne chahiye.
+ */
+const ONCE_PER_BUYER = new Set(['requestSent', 'accepted']);
+
+/**
+ * Ye activity dobara likhni chahiye ya nahi.
+ *
+ * Pehle har cheez par sirf "aaj" ka guard tha. Us se ek asli kharabi hui:
+ * stage aage peechhe karne par mahine bhar me requestSent dobara lag jata
+ * tha, aur 55 buyers par 74 requests gin li gayin -- yani report me 19 aisi
+ * requests thin jo kabhi bheji hi nahi gayin.
+ */
+const skipActivity = (buyer, type) => {
+  if (ONCE_PER_BUYER.has(type)) {
+    return (buyer.activity || []).some((a) => a.type === type);
+  }
+
+  return loggedToday(buyer, type);
+};
+
 const loggedToday = (buyer, type) => {
   const start = new Date();
   start.setHours(0, 0, 0, 0);
@@ -167,6 +194,7 @@ const getPlaybook = async (req, res) => {
         monthlyGoal: MONTHLY_GOAL,
         outreachSteps: OUTREACH_STEPS,
         replyGuide: REPLY_GUIDE,
+        resources: RESOURCES,
         searchHelper: SEARCH_HELPER,
         extraSearch: EXTRA_SEARCH,
         dailyTasks: DAILY_TASKS,
@@ -261,16 +289,84 @@ const parseProfilePdf = async (req, res) => {
       return res.status(422).json({
         success: false,
         message:
-          'Is PDF me profile ka data nahi mila. LinkedIn par profile kholein → ' +
-          'More → Save to PDF, aur wahi file bhejein.',
+          'No profile data found in this PDF. On LinkedIn open the profile → ' +
+          'More → Save to PDF, and upload that file.',
         data,
       });
     }
 
-    return res.status(200).json({ success: true, message: 'PDF parh li', data });
+    return res.status(200).json({ success: true, message: 'PDF read', data });
   } catch (error) {
     return fail(res, error);
   }
+};
+
+/**
+ * Jin stages se guzar kar buyer yahan tak pohancha, unki activity bhi likh do.
+ *
+ * Wajah (asal kaam se nikli hui): aksar aisa hota hai ke request bheji jaye
+ * aur LinkedIn par banda accept bhi kar le -- is se PEHLE ke app me record
+ * bane. Tab buyer seedha "Connected" par add hota hai, aur app ke paas uski
+ * request ka koi nishan nahi rehta. Hafte ki ginti me wo request ghayab ho
+ * jati thi, halanke bheji gayi thi.
+ *
+ * Sirf funnel ke stages tak. Won / Not now / Lost / Withdrawn par kuch nahi
+ * likha jata -- wo aksar purani baat ka record hota hai, aur us se IS hafte
+ * ki ginti jhooti ho jati.
+ *
+ * Ye sirf Add Buyer (createBuyer) par chalta hai. CSV import aur backup
+ * restore jaan boojh kar is se bahar hain: wahan ek saath saikron purani rows
+ * aati hain, aur unki activity is hafte me gin jana report tabah kar deta.
+ */
+/**
+ * Stage par pohanchne se jo kaam khud ba khud ho chuka, wo likh do.
+ *
+ * Wohi ek-din-ek-dafa wala guard yahan bhi lagta hai, warna stage aage peechhe
+ * karne par ek hi message kai dafa gin jata.
+ */
+const addImplied = (buyer, stage, at = new Date()) => {
+  (STAGE_IMPLIES[stage] || []).forEach((type) => {
+    if (skipActivity(buyer, type)) return;
+    buyer.activity.push({ type, at, note: stage });
+  });
+};
+
+/**
+ * Agla qadam kab -- stage ke saath ye bhi dekh kar ke kaam baqi hai ya nahi.
+ *
+ * Connected par DO message ja chuke hon to playbook kehta hai ruk jao. Us
+ * soorat me koi tareekh nahi lagti -- warna wo buyer Follow-ups tab me para
+ * rehta hai aur rozana ka kaam jhoota barha deta hai, jabke karne ko kuch
+ * bacha hi nahi. (7 din khamoshi ke baad wo khud "No Reply" ho jata hai.)
+ */
+const nextStepAfter = (buyer) => {
+  if (buyer.stage === 'Connected') {
+    const sent = (buyer.activity || []).filter((a) => a.type === 'messageSent').length;
+    if (sent >= 2) return null;
+  }
+
+  return nextStepFor(buyer.stage);
+};
+
+const FUNNEL_LAST = 'Bulk Quote Sent';
+
+const activityUpTo = (stage, at) => {
+  const idx = STAGES.indexOf(stage);
+  const end = STAGES.indexOf(FUNNEL_LAST);
+
+  // 0 = "Request Sent" -- uske liye pre-save khud hi activity laga deta hai
+  if (idx <= 0 || idx > end) return [];
+
+  const types = [];
+
+  STAGES.slice(0, idx + 1).forEach((s) => {
+    if (STAGE_ACTIVITY[s]) types.push(STAGE_ACTIVITY[s]);
+
+    // Us stage par jo kaam khud ho chuka hota hai (misal Connected par Step 2)
+    (STAGE_IMPLIES[s] || []).forEach((t) => types.push(t));
+  });
+
+  return types.map((type) => ({ type, at, note: 'Add Buyer' }));
 };
 
 const createBuyer = async (req, res) => {
@@ -305,6 +401,14 @@ const createBuyer = async (req, res) => {
       notes: p.notes || '',
       contactId: p.contactId || null,
     });
+
+    /*
+     * Request Sent se aage ka koi stage chuna gaya ho to peechhe ke qadam bhi
+     * darj kar do. activity pehle se bhari ho to pre-save apni taraf se kuch
+     * nahi daalta -- yehi chahiye.
+     */
+    const seeded = activityUpTo(buyer.stage, new Date());
+    if (seeded.length) buyer.activity = seeded;
 
     await buyer.save();
 
@@ -348,9 +452,11 @@ const updateBuyer = async (req, res) => {
     if (stageChanged) {
       // Stage aage barha to us qadam ki tareekh mehfooz kar lo
       const type = STAGE_ACTIVITY[buyer.stage];
-      if (type && !loggedToday(buyer, type)) {
+      if (type && !skipActivity(buyer, type)) {
         buyer.activity.push({ type, at: new Date() });
       }
+
+      addImplied(buyer, buyer.stage);
 
       if (!p.lastContactDate) buyer.lastContactDate = new Date();
 
@@ -361,7 +467,7 @@ const updateBuyer = async (req, res) => {
        * khud lag jati hai.
        */
       if (p.nextStepDate === undefined) {
-        buyer.nextStepDate = nextStepFor(buyer.stage);
+        buyer.nextStepDate = nextStepAfter(buyer);
       }
     }
 
@@ -405,7 +511,7 @@ const logActivity = async (req, res) => {
     if (!buyer) return res.status(404).json({ success: false, message: 'Buyer not found' });
 
     // Aaj pehle hi lag chuka ho to dobara na ginein
-    const already = loggedToday(buyer, type);
+    const already = skipActivity(buyer, type);
 
     if (!already) {
       buyer.activity.push({ type, at: new Date(), note: note || '' });
@@ -416,6 +522,8 @@ const logActivity = async (req, res) => {
     if (stage && STAGES.includes(stage) && stage !== buyer.stage) {
       buyer.stage = stage;
       buyer.color = colorForStage(stage);
+
+      addImplied(buyer, stage);
     }
 
     /*
@@ -426,14 +534,14 @@ const logActivity = async (req, res) => {
      * Pehle ye chhooti hi nahi thi, is liye accept ke baad table me Next Step
      * ka khana khali para rehta tha aur buyer nazar se gir jata tha.
      */
-    buyer.nextStepDate = nextStepFor(buyer.stage);
+    buyer.nextStepDate = nextStepAfter(buyer);
 
     await buyer.save();
 
     return res.status(200).json({
       success: true,
       message: already
-        ? (ACTIVITY_LABELS[type] || type) + ' — aaj pehle hi likha ja chuka tha'
+        ? (ACTIVITY_LABELS[type] || type) + ' — already recorded today'
         : (ACTIVITY_LABELS[type] || type) + ' logged',
       alreadyLogged: already,
       data: buyer,
@@ -486,7 +594,7 @@ const bulkLogActivity = async (req, res) => {
 
     for (const buyer of buyers) {
       // Wohi guard jo ek-ek par lagta hai -- aaj dobara na ginein
-      if (loggedToday(buyer, type)) {
+      if (skipActivity(buyer, type)) {
         skipped += 1;
       } else {
         buyer.activity.push({ type, at: now, note: note || '' });
@@ -498,10 +606,12 @@ const bulkLogActivity = async (req, res) => {
       if (stage && STAGES.includes(stage) && stage !== buyer.stage) {
         buyer.stage = stage;
         buyer.color = colorForStage(stage);
+
+        addImplied(buyer, stage, now);
       }
 
       // Wahi usool jo ek-ek par lagta hai
-      buyer.nextStepDate = nextStepFor(buyer.stage, now);
+      buyer.nextStepDate = nextStepAfter(buyer);
 
       await buyer.save();
     }
@@ -511,8 +621,8 @@ const bulkLogActivity = async (req, res) => {
     return res.status(200).json({
       success: true,
       message:
-        logged + ' par "' + label + '" likha gaya' +
-        (skipped ? ', ' + skipped + ' aaj pehle hi likhe ja chuke the' : ''),
+        logged + ' marked "' + label + '"' +
+        (skipped ? ', ' + skipped + ' already recorded today' : ''),
       logged,
       skipped,
     });
@@ -912,6 +1022,89 @@ const saveReport = async (req, res) => {
   }
 };
 
+/**
+ * Shuru se ab tak ka poora hisaab.
+ *
+ * Hafte wali report sirf ek hafta dikhati hai -- magar aksar sawal ye hota
+ * hai: "ab tak kul kitni requests gayin, kitni lagin, kitni baat aage barhi".
+ * Us ke liye har hafte ki report jor kar dekhna parta tha.
+ *
+ * Yahan sharah (%) bhi nikalti hai, kyunke asal maloomat ginti me nahi
+ * NISBAT me hoti hai: 500 requests me se 50 accept hona aur 100 me se 50
+ * accept hona do bilkul alag kahaniyan hain.
+ */
+const overallReport = async (req, res) => {
+  try {
+    const [counts, byStage, total, first, reports] = await Promise.all([
+      activityCounts(new Date(0), new Date()),
+      linkedinBuyerModel.aggregate([{ $group: { _id: '$stage', n: { $sum: 1 } } }]),
+      linkedinBuyerModel.countDocuments(),
+
+      // Sab se pehla kaam kab hua -- yahin se arsa shuru hota hai
+      linkedinBuyerModel
+        .aggregate([
+          { $unwind: '$activity' },
+          { $group: { _id: null, at: { $min: '$activity.at' } } },
+        ])
+        .then((r) => (r[0] ? r[0].at : null)),
+
+      linkedinReportModel.countDocuments(),
+    ]);
+
+    const stageCounts = {};
+    STAGES.forEach((s) => { stageCounts[s] = 0; });
+    byStage.forEach((r) => { stageCounts[r._id] = r.n; });
+
+    /* Arsa -- kam az kam 1 hafta, warna pehle hafte me ausat bemani ho jata */
+    const days = first ? Math.max(1, Math.round((Date.now() - new Date(first)) / 86400000)) : 0;
+    const weeks = Math.max(1, Math.round(days / 7));
+
+    /** Sharah: a me se b, foisad me. Bina bunyaad ke sifar nahi dikhate. */
+    const rate = (part, whole) => (whole > 0 ? Math.round((part / whole) * 100) : null);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        since: first,
+        days,
+        weeks,
+
+        counts,
+        targets: WEEKLY_TARGETS,
+
+        /* Har hafte ka ausat -- target se muqabla karne ke liye */
+        perWeek: Object.fromEntries(
+          Object.entries(counts).map(([k, v]) => [k, Math.round((v / weeks) * 10) / 10])
+        ),
+
+        /**
+         * Qadam dar qadam sharah.
+         *
+         * Har sharah apne PICHHLE qadam se nikalti hai, pehle qadam se nahi --
+         * warna aakhir me aisa number banta hai jo kuch nahi batata.
+         */
+        rates: {
+          accepted: rate(counts.accepted, counts.requestSent),
+          replied: rate(counts.conversation, counts.accepted),
+          mockup: rate(counts.mockupSent, counts.conversation),
+          sample: rate(counts.sampleOrdered, counts.mockupSent),
+        },
+
+        pipeline: {
+          total,
+          byStage: stageCounts,
+          open: total - CLOSED_STAGES.reduce((n, s) => n + (stageCounts[s] || 0), 0),
+          closed: CLOSED_STAGES.reduce((n, s) => n + (stageCounts[s] || 0), 0),
+        },
+
+        savedReports: reports,
+      },
+    });
+  } catch (error) {
+    return fail(res, error);
+  }
+};
+
 const listReports = async (req, res) => {
   try {
     const data = await linkedinReportModel.find().sort({ weekStart: -1 }).limit(60).lean();
@@ -1025,9 +1218,9 @@ const importBuyers = async (req, res) => {
       return res.status(400).json({
         success: false,
         message:
-          'Ye poora backup lagta hai (Activity/Reports sheets mojood hain). ' +
-          'Is ke liye Import nahi — RESTORE istemal karein, warna activity aur ' +
-          'reports chhoot jayengi.',
+          'This looks like a full backup (it has Activity/Reports sheets). ' +
+          'Use RESTORE for this, not Import — otherwise the activity and ' +
+          'reports are lost.',
       });
     }
 
@@ -1487,6 +1680,7 @@ module.exports = {
   deleteQuestion,
   previewReport,
   saveReport,
+  overallReport,
   listReports,
   deleteReport,
   exportBuyers,

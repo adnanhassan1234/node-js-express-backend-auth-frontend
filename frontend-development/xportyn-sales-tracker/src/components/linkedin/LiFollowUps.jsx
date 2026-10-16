@@ -29,10 +29,10 @@ const DUE_DAYS = 2;
  * chuka hai.
  */
 const BUCKETS = [
-  { key: 'late', title: 'Guzar chuke', tone: 'border-l-red-500 bg-red-50/60', badge: 'bg-red-200 text-red-800' },
-  { key: 'today', title: 'Aaj', tone: 'border-l-red-500 bg-red-50/40', badge: 'bg-red-200 text-red-800' },
-  { key: 'tomorrow', title: 'Kal', tone: 'border-l-amber-400 bg-amber-50/50', badge: 'bg-amber-200 text-amber-800' },
-  { key: 'later', title: 'Parson', tone: 'border-l-amber-300 bg-amber-50/30', badge: 'bg-amber-100 text-amber-800' },
+  { key: 'late', title: 'Overdue', tone: 'border-l-red-500 bg-red-50/60', badge: 'bg-red-200 text-red-800' },
+  { key: 'today', title: 'Today', tone: 'border-l-red-500 bg-red-50/40', badge: 'bg-red-200 text-red-800' },
+  { key: 'tomorrow', title: 'Tomorrow', tone: 'border-l-amber-400 bg-amber-50/50', badge: 'bg-amber-200 text-amber-800' },
+  { key: 'later', title: 'In 2 days', tone: 'border-l-amber-300 bg-amber-50/30', badge: 'bg-amber-100 text-amber-800' },
 ];
 
 const bucketOf = (days) => {
@@ -113,13 +113,13 @@ const LiFollowUps = ({ playbook, onChanged }) => {
       <div className="card flex flex-wrap items-center justify-between gap-3 p-4">
         <div>
           <h3 className="text-sm font-bold text-slate-800">
-            Aaj ka kaam
+            Due now
             <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">
               {rows.length}
             </span>
           </h3>
           <p className="mt-0.5 text-xs text-slate-500">
-            Jin par agla qadam <strong>{DUE_DAYS} din</strong> ke andar hai — guzar chuke bhi
+            Everyone whose next step falls within <strong>{DUE_DAYS} days</strong> — overdue included
           </p>
         </div>
 
@@ -132,9 +132,9 @@ const LiFollowUps = ({ playbook, onChanged }) => {
       {rows.length === 0 ? (
         <div className="card p-10 text-center">
           <LuCircleCheck className="mx-auto h-9 w-9 text-green-500" />
-          <p className="mt-2 font-semibold text-slate-700">Sab kaam ho chuka</p>
+          <p className="mt-2 font-semibold text-slate-700">All caught up</p>
           <p className="mt-1 text-sm text-slate-400">
-            Agle {DUE_DAYS} din me koi follow-up due nahi. Nayi requests bhejne ka waqt hai.
+            Nothing due in the next {DUE_DAYS} days. Good time to send new requests.
           </p>
         </div>
       ) : (
@@ -180,7 +180,7 @@ const LiFollowUps = ({ playbook, onChanged }) => {
                         warna row dekh kar pata hi nahi chalta ke karna kya hai.
                       */}
                       <p className="mt-1.5 text-sm text-slate-700">
-                        {b.nextStep || playbook.nextActions?.[b.stage]?.label || 'Agla qadam likha nahi'}
+                        {b.nextStep || playbook.nextActions?.[b.stage]?.label || 'No next step written'}
                       </p>
 
                       <p className="mt-0.5 text-xs font-bold text-slate-600">
@@ -201,7 +201,7 @@ const LiFollowUps = ({ playbook, onChanged }) => {
                           href={profileUrl(b.linkedinUrl)}
                           target="_blank"
                           rel="noreferrer"
-                          title={'Profile kholein — ' + b.name}
+                          title={'Open profile — ' + b.name}
                           className="inline-flex items-center gap-1 rounded-md bg-brand-50 px-2 py-1 text-xs font-bold text-brand-700 transition hover:bg-brand-100"
                         >
                           <LuLinkedin className="h-3.5 w-3.5" />
@@ -215,11 +215,11 @@ const LiFollowUps = ({ playbook, onChanged }) => {
                           }
                           target="_blank"
                           rel="noreferrer"
-                          title="Profile ka link save nahi — naam se dhoondein"
+                          title="No profile link saved — search by name"
                           className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 transition hover:text-brand-700 hover:underline"
                         >
                           <LuSearch className="h-3.5 w-3.5" />
-                          Dhoondein
+                          Search
                         </a>
                       )}
 
@@ -227,12 +227,12 @@ const LiFollowUps = ({ playbook, onChanged }) => {
                         value={b.stage}
                         onChange={(e) => changeStage(b, e.target.value)}
                         disabled={acting === b._id}
-                        title="Kaam ho gaya? Stage badlein — nayi tareekh khud lag jayegi"
+                        title="Done? Change the stage — the next date is set for you"
                         className="input w-auto py-1 text-xs disabled:opacity-50"
                       >
                         {playbook.stages.map((s) => (
                           <option key={s} value={s}>
-                            {s === playbook.nextActions?.[b.stage]?.stage ? s + '  ← agla qadam' : s}
+                            {s === playbook.nextActions?.[b.stage]?.stage ? s + '  ← next step' : s}
                           </option>
                         ))}
                       </select>
@@ -258,6 +258,7 @@ const LiFollowUps = ({ playbook, onChanged }) => {
             setOpenId(null);
             afterChange();
           }}
+          onChanged={afterChange}
         />
       )}
     </div>

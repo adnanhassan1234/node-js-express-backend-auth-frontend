@@ -115,18 +115,18 @@ const SocialFinder = () => {
       <div>
         <h2 className="text-xl font-bold text-slate-900">Social Finder</h2>
         <p className="text-sm text-slate-500">
-          Facebook aur Instagram par buyers dhoondne ka shortcut — LinkedIn wale kaam se alag
+          A shortcut for finding buyers on Facebook and Instagram — separate from the LinkedIn work
         </p>
       </div>
 
       <div className="card border-l-4 border-l-slate-400 p-4">
         <p className="text-sm text-slate-600">
-          Ye sirf <strong>dhoondne</strong> ke liye hai. Yahan kuch save nahi hota aur hafte ki
-          ginti me kuch nahi jata — wo sab LinkedIn Dashboard me hai.
+          This is for <strong>finding</strong> only. Nothing is saved here and nothing goes into the
+          weekly counts — that all lives in the LinkedIn Dashboard.
         </p>
         <p className="mt-1.5 text-xs text-slate-500">
-          Jo buyer yahan mile aur kaam ka lage, usay <strong>LinkedIn → Pipeline → Add Buyer</strong>{' '}
-          me daal dein, tab wo ginti me aayega.
+          When you find a buyer worth keeping, add them in <strong>LinkedIn → Pipeline → Add Buyer</strong>{' '}
+          — only then do they count.
         </p>
       </div>
 
@@ -137,8 +137,8 @@ const SocialFinder = () => {
           <h3 className="text-sm font-bold text-slate-800">Facebook</h3>
         </div>
         <p className="mb-3 text-xs text-slate-500">
-          Facebook par asal cheez <strong>Groups</strong> hain — local league aur club ke groups.
-          Admin aksar wohi shakhs hota hai jo kit khareedta hai.
+          On Facebook the real prize is <strong>Groups</strong> — local league and club groups.
+          The admin is often the person who buys the kit.
         </p>
 
         {/*
@@ -148,12 +148,12 @@ const SocialFinder = () => {
           dono se poora hota hai.
         */}
         <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50/60 p-2.5">
-          <p className="text-xs font-bold text-blue-900">Follow karein, friend request nahi</p>
+          <p className="text-xs font-bold text-blue-900">Follow, do not send a friend request</p>
           <p className="mt-0.5 text-[11px] leading-relaxed text-blue-800">
-            Ajnabi ko friend request bhejna Facebook par shikayat ka sabab banta hai, aur chand
-            shikayaton par account ruk jata hai. <strong>Follow</strong> me ye khatra nahi aur unki
-            posts phir bhi nazar aati hain. Baat shuru karni ho to{' '}
-            <strong>club ke Page par message</strong> karein — wo karobari raasta hai, zaati nahi.
+            Friend requests to strangers get reported on Facebook, and a few reports are enough
+            to get the account restricted. <strong>Follow</strong> carries no such risk and you
+            still see their posts. To start a conversation, message the{' '}
+            <strong>club Page</strong> — that is the business route, not a personal one.
           </p>
         </div>
 
@@ -215,7 +215,7 @@ const SocialFinder = () => {
             className="btn-secondary shrink-0 py-1 text-xs"
           >
             <LuExternalLink className="h-3.5 w-3.5" />
-            Google se
+            Via Google
           </a>
         </div>
       </div>
@@ -227,18 +227,18 @@ const SocialFinder = () => {
           <h3 className="text-sm font-bold text-slate-800">Instagram</h3>
         </div>
         <p className="mb-3 text-xs text-slate-500">
-          Instagram par naam se dhoondna LinkedIn jaisa kaam nahi karta —{' '}
-          <strong>hashtag</strong> hi asal raasta hai. Club apni kit ki tasveer in ke saath dalte
-          hain, aur <strong>bio me email ya website</strong> hoti hai.
+          Searching by name on Instagram does not work the way it does on LinkedIn —{' '}
+          <strong>hashtags</strong> are the real route. Clubs post their kit photos with these,
+          and the <strong>bio has the email or website</strong>.
         </p>
 
         <div className="mb-3 rounded-lg border border-pink-200 bg-pink-50/60 p-2.5">
-          <p className="text-xs font-bold text-pink-900">Follow pehle, DM baad me</p>
+          <p className="text-xs font-bold text-pink-900">Follow first, DM later</p>
           <p className="mt-0.5 text-[11px] leading-relaxed text-pink-800">
-            Jis ko follow nahi karte, uska DM <strong>Requests</strong> me chala jata hai aur aksar
-            kabhi nahi khulta. Pehle follow karein, ek do posts par asal baat likhein, phir DM
-            karein. Aur bio zarur dekhein — email wahin likhi ho to <strong>DM ke bajaye email</strong>{' '}
-            behtar chalti hai.
+            If you do not follow someone, your DM lands in <strong>Requests</strong> and is often
+            never opened. Follow first, leave a real comment on a post or two, then DM.
+            And check the bio — if the email is there, <strong>email beats a DM</strong>{' '}
+            every time.
           </p>
         </div>
 
@@ -259,7 +259,7 @@ const SocialFinder = () => {
               className="btn-primary py-1.5 text-xs"
             >
               <LuHash className="h-3.5 w-3.5" />
-              #{igTag} kholein
+              Open #{igTag}
             </a>
           </div>
         </div>
@@ -311,7 +311,7 @@ const SocialFinder = () => {
             className="btn-secondary shrink-0 py-1 text-xs"
           >
             <LuExternalLink className="h-3.5 w-3.5" />
-            Google se
+            Via Google
           </a>
         </div>
       </div>
@@ -323,7 +323,7 @@ const SocialFinder = () => {
           <h3 className="text-sm font-bold text-slate-800">Post par comment</h3>
         </div>
         <p className="mb-3 text-xs text-slate-500">
-          Club ya academy ki post ke neeche likhne ke liye tayyar jumle. Copy karein, paste karein.
+          Ready-made lines to put under a club or academy post. Copy, paste.
         </p>
 
         {/*
@@ -333,13 +333,13 @@ const SocialFinder = () => {
           alag jumle rakhe hain.
         */}
         <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50/70 p-2.5">
-          <p className="text-xs font-bold text-amber-900">Ek hi comment har jagah na lagayein</p>
+          <p className="text-xs font-bold text-amber-900">Do not paste the same comment everywhere</p>
           <p className="mt-0.5 text-[11px] leading-relaxed text-amber-800">
-            Facebook aur Instagram dono ek jaisa comment baar baar dekh kar usay{' '}
-            <strong>spam</strong> gin lete hain — comment chhup jata hai aur account par hadd lag
-            jati hai. Har post ke mauqe ke mutabiq alag jumla chunein, aur{' '}
-            <strong>do-ek lafz apne se badal dein</strong> (club ka naam, rang) — is se comment asli
-            lagta hai aur kaam bhi behtar karta hai.
+            Facebook and Instagram both read a repeated comment as{' '}
+            <strong>spam</strong> — the comment gets hidden and the account gets limited.
+            Pick the line that fits the post, and{' '}
+            <strong>change a word or two yourself</strong> (the club name, their colours) — it reads
+            as real and works better.
           </p>
         </div>
 
@@ -369,9 +369,9 @@ const SocialFinder = () => {
         </div>
 
         <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
-          In me qeemat ya minimum order jaan boojh kar nahi likha — wo har order par alag hota hai,
-          aur comment me ghalat number likhna baad me mushkil banata hai. Free mock-up ki peshkash
-          wahi hai jo playbook me manzoor shuda hai.
+          None of these mention a price or minimum order on purpose — those change with every order,
+          and a wrong number in a comment causes trouble later. The free mock-up offer is the
+          one already approved in the playbook.
         </p>
       </div>
 
@@ -383,37 +383,37 @@ const SocialFinder = () => {
         kam az kam likh kar bata dete hain.
       */}
       <div className="card border-l-4 border-l-red-400 bg-red-50/40 p-4">
-        <p className="text-sm font-semibold text-red-900">Rozana ki hadd — ehtiyat se</p>
+        <p className="text-sm font-semibold text-red-900">Daily limits — go carefully</p>
         <p className="mt-1 text-xs leading-relaxed text-red-800">
-          Facebook aur Instagram apni hadd khul kar nahi batate, magar ek saath bohat ziyada follow
-          karne par account par pabandi lag jati hai — khaas tor par naye account par. Aram se
-          chalein: <strong>thore log rozana</strong>, aur beech me waqfa. Ek hi din me saikron
-          follow karna sab se bara khatra hai.
+          Facebook and Instagram do not publish their limits, but following too many at once gets
+          the account restricted — especially a new one. Go steady:{' '}
+          <strong>a few people a day</strong>, with gaps in between. Hundreds in one day is
+          the biggest risk of all.
         </p>
         <p className="mt-1 text-xs text-red-800">
-          Account ruk gaya to kaam hafton ruk jata hai — jaldi ka faida us nuqsan se bohat kam hai.
+          If the account gets restricted the work stops for weeks — far more costly than the time saved.
         </p>
       </div>
 
       {/* ---------------- Yaad rakhne wali baatein ---------------- */}
       <div className="card border-l-4 border-l-amber-400 bg-amber-50/40 p-4">
-        <p className="text-sm font-semibold text-amber-900">Contact karne se pehle</p>
+        <p className="text-sm font-semibold text-amber-900">Before you reach out</p>
         <ul className="mt-1 list-disc space-y-1 pl-5 text-xs leading-relaxed text-amber-800">
           <li>
-            Email campaign ki list dekh lein — us club ko XPORTYN ki email ja chuki ho to wohi baat
-            dobara na karein.
+            Check the email campaign list — if XPORTYN has already emailed that club, do not repeat
+            the same pitch.
           </li>
           <li>
-            Facebook group me seedha ishtihaar na dein. Pehle admin ko message karein, warna group
-            se nikal diye jate hain.
+            Never advertise straight into a Facebook group. Message the admin first, or you get
+            removed from the group.
           </li>
           <li>
-            Ek hi shakhs ko LinkedIn, Facebook aur Instagram teenon par na gherein — ye peechha
-            karna lagta hai. Ek jagah chunein, behtar ye ke jahan wo zyada active ho.
+            Do not surround one person on LinkedIn, Facebook and Instagram at once — it reads as
+            stalking. Pick one place, ideally wherever they are most active.
           </li>
           <li>
-            Jo buyer kaam ka lage usay <strong>LinkedIn → Pipeline → Add Buyer</strong> me daal
-            dein, warna wo kahin record nahi hota aur bhool jata hai.
+            Add any buyer worth keeping in <strong>LinkedIn → Pipeline → Add Buyer</strong>, or
+            they are recorded nowhere and get forgotten.
           </li>
         </ul>
       </div>

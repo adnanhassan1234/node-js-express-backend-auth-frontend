@@ -559,7 +559,7 @@ const ContactModal = ({ contactId, onClose, onSaved, onDeleted }) => {
                             disabled={!contact.email}
                             className="btn-secondary flex-1"
                           >
-                            ✉️ Mail app me kholein
+                            ✉️ Open in mail app
                           </button>
                         </div>
 

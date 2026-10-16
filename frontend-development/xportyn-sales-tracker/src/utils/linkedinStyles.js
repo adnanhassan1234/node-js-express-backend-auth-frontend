@@ -63,6 +63,13 @@ const STAGE_STYLES = {
     badge: 'bg-slate-200 text-slate-500',
     hex: '#cbd5e1',
   },
+
+  /* No Reply: connect hua, do message gaye, jawab nahi aaya */
+  'No Reply': {
+    row: 'bg-slate-50 hover:bg-slate-100',
+    badge: 'bg-slate-200 text-slate-500',
+    hex: '#94a3b8',
+  },
 };
 
 const FALLBACK = {

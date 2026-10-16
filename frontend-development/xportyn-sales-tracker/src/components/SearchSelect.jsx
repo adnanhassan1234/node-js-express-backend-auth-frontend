@@ -18,9 +18,9 @@ const SearchSelect = ({
   value,
   onChange,
   options = [],
-  placeholder = 'Chunein',
-  searchPlaceholder = 'Likh kar dhoondein…',
-  emptyText = 'Kuch nahi mila',
+  placeholder = 'Choose',
+  searchPlaceholder = 'Type to search…',
+  emptyText = 'Nothing found',
   footer = null,
 }) => {
   const [open, setOpen] = useState(false);
@@ -121,7 +121,7 @@ const SearchSelect = ({
           <button
             type="button"
             onClick={() => setOpen(false)}
-            title="Band karein"
+            title="Close"
             className="shrink-0 text-slate-400 transition hover:text-slate-700"
           >
             <LuX className="h-4 w-4" />
@@ -165,7 +165,7 @@ const SearchSelect = ({
             onClick={() => pick(null)}
             className="w-full border-t border-slate-200 px-3 py-1.5 text-left text-xs font-semibold text-red-600 transition hover:bg-red-50"
           >
-            Chunav hatayein
+            Clear selection
           </button>
         )}
       </div>

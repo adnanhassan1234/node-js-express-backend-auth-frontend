@@ -14,6 +14,7 @@ import { linkedinApi } from '../../api/endpoints';
 import { getErrorMessage } from '../../api/client';
 import { formatDate } from '../../utils/date';
 import Spinner from '../Spinner';
+import LiOverall from './LiOverall';
 import LiWeekNav, { isCurrentWeek, weekKey } from './LiWeekNav';
 
 /**
@@ -33,6 +34,15 @@ const LiReport = ({ playbook, week = '', onWeekChange }) => {
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const [history, setHistory] = useState([]);
+
+  /**
+   * Kaun si report dekh rahe hain.
+   *
+   * Hafte wali manager ko Saturday jati hai. "Shuru se ab tak" wali tab
+   * kaam aati hai jab sawal ye ho ke ab tak kul kitna kaam hua aur kitna
+   * chala -- us ke liye har hafte ki report jor kar dekhna parta tha.
+   */
+  const [view, setView] = useState('week');
 
   /* Is hafte ki report pehle save ho chuki hai? */
   const [saved, setSaved] = useState(null);
@@ -130,9 +140,9 @@ const LiReport = ({ playbook, week = '', onWeekChange }) => {
     const when = formatDate(r.weekStart);
 
     const ok = window.confirm(
-      'Week of ' + when + ' ki report delete karein?\n\n' +
-        'Activity ko kuch nahi hota. Usi hafte par ja kar Save dabane se report ' +
-        'dobara ban jayegi.'
+      'Delete the report for week of ' + when + '?\n\n' +
+        'The activity is untouched. Go to that week and press Save and the report ' +
+        'is rebuilt.'
     );
     if (!ok) return;
 
@@ -161,20 +171,39 @@ const LiReport = ({ playbook, week = '', onWeekChange }) => {
 
   const current = isCurrentWeek(data.weekStart);
 
+  const tabBtn = (key) =>
+    `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+      view === key ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-100'
+    }`;
+
   return (
     <div className="space-y-4">
+      {/* ---------- Kaun si report ---------- */}
+      <div className="card inline-flex gap-1 p-1.5">
+        <button type="button" onClick={() => setView('week')} className={tabBtn('week')}>
+          This week
+        </button>
+        <button type="button" onClick={() => setView('all')} className={tabBtn('all')}>
+          Since the start
+        </button>
+      </div>
+
+      {view === 'all' ? (
+        <LiOverall playbook={playbook} />
+      ) : (
+      <>
       {/* ---------- Kaun sa hafta ---------- */}
       <div className="card flex flex-wrap items-center justify-between gap-3 p-3">
         <LiWeekNav start={data.weekStart} end={data.weekEnd} onChange={onWeekChange} />
 
         {saved ? (
           <p className="text-xs font-medium text-green-700">
-            Save ho chuki hai — dobara Save karne se yehi report update hogi, nayi nahi banegi.
+            Already saved — pressing Save again updates this report, it does not create a new one.
           </p>
         ) : (
           <p className="text-xs font-medium text-amber-800">
-            Abhi save nahi hui — Save dabayein, warna hafta guzarne par ginti sirf yahin
-            arrow se milegi.
+            Not saved yet — press Save, otherwise once the week passes the counts are only
+            reachable with these arrows.
           </p>
         )}
       </div>
@@ -183,7 +212,7 @@ const LiReport = ({ playbook, week = '', onWeekChange }) => {
       <div className="card p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-bold text-slate-800">
-            {current ? 'Is hafte ki ginti' : 'Us hafte ki ginti'}
+            {current ? "This week's counts" : "That week's counts"}
           </h3>
           <p className="text-xs text-slate-500">
             {formatDate(data.weekStart)} – {formatDate(data.weekEnd)}
@@ -191,20 +220,16 @@ const LiReport = ({ playbook, week = '', onWeekChange }) => {
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {/* Sirf ginti -- target ka muqabla hata diya gaya hai */}
           {Object.entries(playbook.activityLabels).map(([key, label]) => {
             const value = data.counts[key] || 0;
-            const target = playbook.weeklyTargets[key];
-            const hit = target && value >= target.min;
 
             return (
               <div key={key} className="rounded-lg border border-slate-200 p-3">
                 <p className="text-xs font-medium text-slate-500">{label}</p>
-                <p className={`text-2xl font-bold ${hit ? 'text-green-700' : 'text-slate-800'}`}>{value}</p>
-                {target && (
-                  <p className="text-[11px] text-slate-400">
-                    target {target.min === target.max ? target.min : target.min + '–' + target.max}
-                  </p>
-                )}
+                <p className={`text-2xl font-bold ${value > 0 ? 'text-slate-800' : 'text-slate-300'}`}>
+                  {value}
+                </p>
               </div>
             );
           })}
@@ -213,14 +238,14 @@ const LiReport = ({ playbook, week = '', onWeekChange }) => {
 
       {/* ---------- Haath se bharne wali cheezein ---------- */}
       <div className="card p-5">
-        <h3 className="mb-3 text-sm font-bold text-slate-800">Ye khud likhni hain</h3>
+        <h3 className="mb-3 text-sm font-bold text-slate-800">Write these yourself</h3>
 
         <div className="space-y-3">
           <div>
             <label className="label">Best conversation this week</label>
             <input
               className="input"
-              placeholder="Organization, mulk, aur unhein kya chahiye"
+              placeholder="Organization, country, and what they need"
               value={best}
               onChange={(e) => setBest(e.target.value)}
             />
@@ -241,7 +266,7 @@ const LiReport = ({ playbook, week = '', onWeekChange }) => {
 
             {data.needsZain.length === 0 ? (
               <p className="text-xs text-slate-400">
-                Koi sawal jawab ke intezar me nahi — Ask Zain wali list khali hai
+                No questions waiting — the Ask Zain list is empty
               </p>
             ) : (
               <ul className="space-y-1">
@@ -254,7 +279,7 @@ const LiReport = ({ playbook, week = '', onWeekChange }) => {
             )}
 
             <p className="mt-1 text-xs text-slate-500">
-              Ye khud aate hain Ask Zain se — jo abhi Pending hain.
+              These come from Ask Zain automatically — the ones still Pending.
             </p>
           </div>
         </div>
@@ -325,7 +350,7 @@ const LiReport = ({ playbook, week = '', onWeekChange }) => {
                       onClick={() => onWeekChange?.(weekKey(new Date(r.weekStart)))}
                       className="text-xs font-semibold text-brand-700 hover:underline"
                     >
-                      Ye hafta kholein →
+                      Open this week →
                     </button>
 
                     <button
@@ -343,6 +368,8 @@ const LiReport = ({ playbook, week = '', onWeekChange }) => {
             ))}
           </ul>
         </div>
+      )}
+      </>
       )}
     </div>
   );

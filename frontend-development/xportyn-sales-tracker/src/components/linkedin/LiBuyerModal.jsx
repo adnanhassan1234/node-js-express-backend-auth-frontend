@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { LuExternalLink, LuTrash2, LuFileUp } from 'react-icons/lu';
+import { LuExternalLink, LuTrash2, LuFileUp, LuCopy, LuCheck, LuSend } from 'react-icons/lu';
 
 import CountrySelect from '../CountrySelect';
 
@@ -72,12 +72,54 @@ const emptyForm = () => ({
   notes: '',
 });
 
+/** Template me [Name] / [Club] bharta hai */
+const fill = (text, name, club) =>
+  String(text || '')
+    .replace(/\[Name\]/g, name || '[Name]')
+    .replace(/\[Club\]/g, club || '[Club]');
+
+/**
+ * Is waqt is buyer ko kaunsa message jana chahiye.
+ *
+ * Yehi wo sawal hai jo Follow-ups tab me row kholte waqt zehan me hota hai:
+ * "ab is ko likhna kya hai?" Pehle uska jawab Outreach tab me ja kar, buyer
+ * dobara chun kar dhoondna parta tha.
+ *
+ * Faisla stage + jo ho chuka hai, dono se:
+ *
+ *   Request Sent                  -> KUCH NAHI. Connection request ke saath
+ *                                    note bhejne ka option LinkedIn hamesha
+ *                                    nahi deta, aur bina note wali request par
+ *                                    likhne ko kuch hota hi nahi -- bas accept
+ *                                    hone ka intezar.
+ *   Connected, abhi koi msg nahi  -> shukriya + sawal (Step 2)
+ *   Connected, ek msg ja chuka    -> 7 din wali follow-up (Step 4)
+ *   Connected, do msg ja chuke    -> kuch nahi (playbook: do se ziyada nahi)
+ *   In Conversation               -> free mock-up ki peshkash (Step 3)
+ *   Mock-up Sent                  -> $200 sample ki peshkash (Step 5)
+ *
+ * Band stages (Won/Lost/No Reply/Withdrawn) par bhi kuch nahi.
+ */
+const stepFor = (stage, activity = [], steps = []) => {
+  const byKey = (k) => steps.find((x) => x.key === k) || null;
+  const sent = activity.filter((a) => a.type === 'messageSent').length;
+
+  if (stage === 'Connected') {
+    if (sent >= 2) return null;
+    return sent === 0 ? byKey('step2') : byKey('step4');
+  }
+  if (stage === 'In Conversation') return byKey('step3');
+  if (stage === 'Mock-up Sent') return byKey('step5');
+
+  return null;
+};
+
 /**
  * Buyer ka modal — naya banane aur purane ko badalne, dono ke liye.
  *
  * `buyerId` na ho to "naya" mode chalta hai.
  */
-const LiBuyerModal = ({ buyerId, playbook, onClose, onSaved, onDeleted }) => {
+const LiBuyerModal = ({ buyerId, playbook, onClose, onSaved, onDeleted, onChanged }) => {
   const isNew = !buyerId;
 
   /*
@@ -90,6 +132,62 @@ const LiBuyerModal = ({ buyerId, playbook, onClose, onSaved, onDeleted }) => {
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
+
+  /* Message copy hua ka nishan */
+  const [copiedMsg, setCopiedMsg] = useState(false);
+  const [marking, setMarking] = useState(false);
+
+  /**
+   * "Bhej diya" dabane ke baad buyer dobara parh lo.
+   *
+   * Modal band kiye baghair -- warna agla message dekhne ke liye row dobara
+   * kholni parti, jo bekaar ka kaam hai.
+   */
+  const reload = async () => {
+    try {
+      const res = await linkedinApi.buyer(buyerId);
+      const b = res.data.data;
+
+      setActivity([...(b.activity || [])].reverse());
+      setForm((f) => ({
+        ...f,
+        stage: b.stage,
+        lastContactDate: toDateInput(b.lastContactDate),
+        nextStepDate: toDateInput(b.nextStepDate),
+      }));
+    } catch {
+      /* na mile to bhi modal chalta rahe */
+    }
+  };
+
+  /**
+   * Message bhej diya -- record likh do.
+   *
+   * Ye wo hissa tha jo chhoot raha tha: message LinkedIn par jata hai, magar
+   * app ko pata hi nahi chalta. Natija ye ke modal wohi message dobara dikhata
+   * raha, aur hafte ki ginti me wo message gina hi nahi gaya.
+   */
+  const markSent = async (step) => {
+    if (!step?.activity) return;
+
+    setMarking(true);
+
+    try {
+      const res = await linkedinApi.logActivity(buyerId, {
+        type: step.activity,
+        stage: step.stage || undefined,
+        note: step.label,
+      });
+
+      toast.success(res.data.message);
+      await reload();
+      onChanged?.();
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Could not save'));
+    } finally {
+      setMarking(false);
+    }
+  };
 
   /* Aadmi ne tareekh khud likh di? Phir default usay na mitaye. */
   const [dateTouched, setDateTouched] = useState(false);
@@ -188,14 +286,14 @@ const LiBuyerModal = ({ buyerId, playbook, onClose, onSaved, onDeleted }) => {
       setFilled(got);
 
       if (got.length === 0) {
-        toast('PDF parh li — magar jo mila wo pehle se bhara hua tha', { icon: 'ℹ️' });
+        toast('PDF read — but everything found was already filled in', { icon: 'ℹ️' });
       } else {
-        toast.success(got.length + ' khaane bhar diye — dekh kar save karein');
+        toast.success(got.length + ' fields filled — check them, then save');
       }
     } catch (error) {
       // 422 par bhi text aata hai -- usay dikha dein, wahi masla samjhata hai
       setRaw(error?.response?.data?.data?.raw || '');
-      toast.error(getErrorMessage(error, 'PDF parhi nahi ja saki'));
+      toast.error(getErrorMessage(error, 'Could not read the PDF'));
     } finally {
       setReading(false);
     }
@@ -289,7 +387,7 @@ const LiBuyerModal = ({ buyerId, playbook, onClose, onSaved, onDeleted }) => {
               {isNew ? 'Add Buyer' : form.name || 'Buyer'}
             </h2>
             <p className="text-sm text-slate-500">
-              {isNew ? 'Connection request bhejte waqt row banayein' : form.company || '—'}
+              {isNew ? 'Create a row when you send a connection request' : form.company || '—'}
             </p>
           </div>
 
@@ -318,11 +416,11 @@ const LiBuyerModal = ({ buyerId, playbook, onClose, onSaved, onDeleted }) => {
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-xs font-bold text-slate-700">
-                      LinkedIn ka profile PDF se bharein
+                      Fill from a LinkedIn profile PDF
                     </p>
                     <p className="text-[11px] leading-snug text-slate-500">
-                      LinkedIn par profile kholein → <strong>More</strong> →{' '}
-                      <strong>Save to PDF</strong> → wo file yahan dein
+                      On LinkedIn open the profile → <strong>More</strong> →{' '}
+                      <strong>Save to PDF</strong> → upload that file here
                     </p>
                   </div>
 
@@ -333,7 +431,7 @@ const LiBuyerModal = ({ buyerId, playbook, onClose, onSaved, onDeleted }) => {
                     className="btn-secondary shrink-0 py-1.5 text-xs"
                   >
                     <LuFileUp className="h-4 w-4" />
-                    {reading ? 'Parh raha hoon...' : 'PDF chunein'}
+                    {reading ? 'Reading...' : 'Choose PDF'}
                   </button>
 
                   <input
@@ -347,8 +445,8 @@ const LiBuyerModal = ({ buyerId, playbook, onClose, onSaved, onDeleted }) => {
 
                 {filled.length > 0 && (
                   <p className="mt-2 rounded bg-white/70 px-2 py-1.5 text-[11px] font-medium text-green-700">
-                    Bhar diye: {filled.join(', ')} — ek nazar dekh lein, andaza ghalat bhi ho
-                    sakta hai
+                    Filled: {filled.join(', ')} — have a look, the guess can be wrong
+
                   </p>
                 )}
 
@@ -360,7 +458,7 @@ const LiBuyerModal = ({ buyerId, playbook, onClose, onSaved, onDeleted }) => {
                         onClick={() => setShowRaw((v) => !v)}
                         className="text-[11px] font-semibold text-brand-700 hover:underline"
                       >
-                        {showRaw ? 'PDF ka text chhupayein' : 'PDF ka text dekhein'}
+                        {showRaw ? 'Hide the PDF text' : 'Show the PDF text'}
                       </button>
 
                       <button
@@ -368,19 +466,19 @@ const LiBuyerModal = ({ buyerId, playbook, onClose, onSaved, onDeleted }) => {
                         onClick={async () => {
                           try {
                             await navigator.clipboard.writeText(raw);
-                            toast.success('Text copy ho gaya');
+                            toast.success('Text copied');
                           } catch {
                             setShowRaw(true);
-                            toast('Copy nahi hua — neeche se khud select kar lein', { icon: 'ℹ️' });
+                            toast('Could not copy — select it below by hand', { icon: 'ℹ️' });
                           }
                         }}
                         className="text-[11px] font-semibold text-slate-500 hover:underline"
                       >
-                        Text copy karein
+                        Copy the text
                       </button>
 
                       <span className="text-[11px] text-slate-400">
-                        kuch ghalat bhara ho to ye text bhej dein
+                        if something is wrong, send me this text
                       </span>
                     </div>
 
@@ -452,7 +550,7 @@ const LiBuyerModal = ({ buyerId, playbook, onClose, onSaved, onDeleted }) => {
                       href={form.linkedinUrl}
                       target="_blank"
                       rel="noreferrer"
-                      title="Profile kholein"
+                      title="Open profile"
                       className="flex shrink-0 items-center rounded-lg border border-slate-300 px-3 text-slate-600 hover:bg-slate-50"
                     >
                       <LuExternalLink className="h-4 w-4" />
@@ -508,7 +606,7 @@ const LiBuyerModal = ({ buyerId, playbook, onClose, onSaved, onDeleted }) => {
               <textarea
                 rows={3}
                 className="input"
-                placeholder="Kya baat hui, kya chahiye…"
+                placeholder="What was discussed, what they need…"
                 value={form.notes}
                 onChange={(e) => set('notes', e.target.value)}
               />
@@ -520,7 +618,7 @@ const LiBuyerModal = ({ buyerId, playbook, onClose, onSaved, onDeleted }) => {
                 <p className="label">Activity ({activity.length})</p>
 
                 {activity.length === 0 ? (
-                  <p className="text-xs text-slate-400">Abhi koi record nahi</p>
+                  <p className="text-xs text-slate-400">Nothing recorded yet</p>
                 ) : (
                   <ol className="space-y-1.5">
                     {activity.map((a, i) => (
@@ -536,6 +634,81 @@ const LiBuyerModal = ({ buyerId, playbook, onClose, onSaved, onDeleted }) => {
                 )}
               </div>
             )}
+            {/* ---- Ab kya bhejna hai ---- */}
+            {!isNew && (() => {
+              const step = stepFor(form.stage, activity, playbook.outreachSteps);
+
+              if (!step) {
+                return (
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                    <p className="text-xs font-bold text-slate-600">No message right now</p>
+                    <p className="mt-0.5 text-[11px] text-slate-500">
+                      {form.stage === 'Request Sent'
+                        ? 'The request has been sent — now just wait for them to accept. Mark the stage Connected and the message appears here.'
+                        : 'Nothing to write at this stage — the playbook says never more than two messages.'}
+                    </p>
+                  </div>
+                );
+              }
+
+              const text = fill(step.body, form.name, form.company);
+
+              return (
+                <div className="rounded-lg border border-brand-200 bg-brand-50/60 p-3">
+                  <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-slate-800">Send this now</p>
+                      <p className="text-[11px] text-slate-500">
+                        {step.label} · {step.when}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(text);
+                          setCopiedMsg(true);
+                          setTimeout(() => setCopiedMsg(false), 1800);
+                          toast.success('Message copied');
+                        } catch {
+                          toast.error('Could not copy - please select the text manually');
+                        }
+                      }}
+                      className="btn-secondary shrink-0 py-1 text-xs"
+                    >
+                      {copiedMsg
+                        ? <LuCheck className="h-3.5 w-3.5 text-green-600" />
+                        : <LuCopy className="h-3.5 w-3.5" />}
+                      {copiedMsg ? 'Copied' : 'Copy'}
+                    </button>
+
+                    {/*
+                      Copy ke saath hi -- warna record likhna bhool jata hai
+                      aur app ko lagta rehta hai ke message gaya hi nahi.
+                    */}
+                    <button
+                      type="button"
+                      onClick={() => markSent(step)}
+                      disabled={marking}
+                      title="Sent it on LinkedIn? Record it"
+                      className="btn-primary shrink-0 py-1 text-xs"
+                    >
+                      <LuSend className="h-3.5 w-3.5" />
+                      {marking ? 'Saving...' : 'Sent it'}
+                    </button>
+                  </div>
+
+                  <p className="whitespace-pre-wrap rounded border border-slate-200 bg-white p-2.5 text-sm leading-relaxed text-slate-800">
+                    {text}
+                  </p>
+
+                  {step.note && (
+                    <p className="mt-1.5 text-[11px] font-medium text-amber-800">{step.note}</p>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
 

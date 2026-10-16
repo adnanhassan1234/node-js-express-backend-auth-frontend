@@ -72,10 +72,10 @@ ${form.title || '[Your Title]'}, Xportyn
         <h3 className="mb-2 text-sm font-bold text-slate-800">Follow-up Cadence</h3>
         <ul className="space-y-1.5 text-sm text-slate-600">
           <li>
-            • <strong>Email Sent</strong> → next follow-up: last contact + <strong>4 din</strong>
+            • <strong>Email Sent</strong> → next follow-up: last contact + <strong>4 days</strong>
           </li>
           <li>
-            • <strong>Follow-up 1</strong> → next follow-up: last contact + <strong>7 din</strong>
+            • <strong>Follow-up 1</strong> → next follow-up: last contact + <strong>7 days</strong>
           </li>
           <li>
             • <strong>Follow-up 2</strong> → no further follow-up

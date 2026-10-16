@@ -137,7 +137,7 @@ const LinkedIn = () => {
       <div>
         <h2 className="text-xl font-bold text-slate-900">LinkedIn Dashboard</h2>
         <p className="text-sm text-slate-500">
-          Connections, outreach aur Saturday wali report — sab ek jagah
+          Connections, outreach and the Saturday report — all in one place
         </p>
       </div>
 

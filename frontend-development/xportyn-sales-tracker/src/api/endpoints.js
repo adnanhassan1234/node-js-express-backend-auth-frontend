@@ -187,6 +187,9 @@ export const linkedinApi = {
   /* ---- Hafte ki report ---- */
   reportPreview: (params = {}) => client.get('/linkedin/report/preview', { params }),
   saveReport: (payload) => client.post('/linkedin/report', payload),
+  // GET /api/linkedin/report/overall (shuru se ab tak)
+  overallReport: () => client.get('/linkedin/report/overall'),
+
   reports: () => client.get('/linkedin/reports'),
 
   // DELETE /api/linkedin/reports/:id (sirf report jati hai, activity nahi)

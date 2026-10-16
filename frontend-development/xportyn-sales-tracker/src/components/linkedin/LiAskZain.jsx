@@ -35,7 +35,7 @@ const LiAskZain = ({ onChanged }) => {
 
   const add = async () => {
     if (!form.question.trim()) {
-      toast.error('Sawal likhein');
+      toast.error('Write a question');
       return;
     }
 
@@ -57,7 +57,7 @@ const LiAskZain = ({ onChanged }) => {
   const answer = async (id) => {
     const text = (answers[id] || '').trim();
     if (!text) {
-      toast.error('Jawab likhein');
+      toast.error('Write an answer');
       return;
     }
 
@@ -89,7 +89,7 @@ const LiAskZain = ({ onChanged }) => {
     <div className="space-y-4">
       {/* ---------- Naya sawal ---------- */}
       <div className="card p-5">
-        <h3 className="mb-3 text-sm font-bold text-slate-800">Zain se poochhna hai</h3>
+        <h3 className="mb-3 text-sm font-bold text-slate-800">Ask Zain</h3>
 
         <div className="grid gap-3 sm:grid-cols-4">
           <div className="sm:col-span-2">
@@ -140,7 +140,7 @@ const LiAskZain = ({ onChanged }) => {
       <div className="card">
         <div className="flex items-center justify-between border-b border-slate-200 p-4">
           <h3 className="text-sm font-bold text-slate-800">
-            {filter === 'Pending' ? 'Jawab ke intezar me' : filter === 'Answered' ? 'Jawab mil gaya' : 'Sab'}
+            {filter === 'Pending' ? 'Waiting for an answer' : filter === 'Answered' ? 'Answered' : 'All'}
             <span className="ml-2 rounded-full bg-brand-100 px-2 py-0.5 text-xs font-bold text-brand-700">
               {rows.length}
             </span>
@@ -161,7 +161,7 @@ const LiAskZain = ({ onChanged }) => {
           <Spinner label="Loading..." />
         ) : rows.length === 0 ? (
           <p className="p-8 text-center text-sm text-slate-400">
-            {filter === 'Pending' ? 'Koi sawal jawab ke intezar me nahi' : 'Kuch nahi mila'}
+            {filter === 'Pending' ? 'No questions waiting for an answer' : 'Nothing found'}
           </p>
         ) : (
           <ul className="divide-y divide-slate-200">
@@ -172,14 +172,14 @@ const LiAskZain = ({ onChanged }) => {
                     <p className="font-semibold text-slate-800">{q.question}</p>
 
                     <p className="mt-0.5 text-xs text-slate-500">
-                      {q.buyerName || 'koi buyer nahi'}
+                      {q.buyerName || 'no buyer'}
                       {q.topic ? ' · ' + q.topic : ''} · {formatDateTime(q.createdAt)}
                     </p>
 
                     {q.isStale && (
                       <p className="mt-1 flex items-center gap-1 text-xs font-bold text-amber-700">
                         <LuTriangleAlert className="h-3.5 w-3.5" />
-                        Ek din se ziyada intezar — Zain ko yaad dilayein
+                        Waiting more than a day — remind Zain
                       </p>
                     )}
 
@@ -205,7 +205,7 @@ const LiAskZain = ({ onChanged }) => {
                   <div className="mt-2 flex gap-2">
                     <input
                       className="input py-1.5 text-sm"
-                      placeholder="Zain ka jawab..."
+                      placeholder="Zain's answer..."
                       value={answers[q._id] || ''}
                       onChange={(e) => setAnswers((a) => ({ ...a, [q._id]: e.target.value }))}
                       onKeyDown={(e) => e.key === 'Enter' && answer(q._id)}

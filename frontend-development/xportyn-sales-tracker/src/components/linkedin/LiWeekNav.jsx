@@ -51,7 +51,7 @@ const LiWeekNav = ({ start, end, onChange }) => {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <button type="button" onClick={() => go(-7)} title="Pichhla hafta" className={arrow}>
+      <button type="button" onClick={() => go(-7)} title="Previous week" className={arrow}>
         <LuChevronLeft className="h-4 w-4" />
       </button>
 
@@ -63,7 +63,7 @@ const LiWeekNav = ({ start, end, onChange }) => {
         type="button"
         onClick={() => go(7)}
         disabled={current}
-        title={current ? 'Ye maujooda hafta hai' : 'Agla hafta'}
+        title={current ? 'This is the current week' : 'Next week'}
         className={arrow}
       >
         <LuChevronRight className="h-4 w-4" />
@@ -71,7 +71,7 @@ const LiWeekNav = ({ start, end, onChange }) => {
 
       {current ? (
         <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-bold text-brand-700">
-          Ye hafta
+          This week
         </span>
       ) : (
         <button
@@ -80,7 +80,7 @@ const LiWeekNav = ({ start, end, onChange }) => {
           className="flex items-center gap-1 rounded-lg bg-brand-600 px-2.5 py-1 text-xs font-semibold text-white transition hover:bg-brand-700"
         >
           <LuRotateCcw className="h-3.5 w-3.5" />
-          Is hafte par wapas
+          Back to this week
         </button>
       )}
     </div>

@@ -51,7 +51,7 @@ const LiRoutine = ({ playbook, onChanged }) => {
       const res = await linkedinApi.updateDay({ taskKey: key, done });
       setDay((d) => ({ ...d, ...res.data.data }));
 
-      if (res.data.data.allDone) toast.success('Aaj ka mamool poora! 🎯');
+      if (res.data.data.allDone) toast.success('Today\'s routine done! 🎯');
       onChanged?.();
     } catch (error) {
       toast.error(getErrorMessage(error, 'Could not save'));
@@ -83,9 +83,9 @@ const LiRoutine = ({ playbook, onChanged }) => {
       <div className="card p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 className="text-sm font-bold text-slate-800">Aaj ka mamool</h3>
+            <h3 className="text-sm font-bold text-slate-800">Today's routine</h3>
             <p className="text-xs text-slate-500">
-              Monday–Saturday · {minutes} minute · 2:00 PM PKT se shuru
+              Monday–Saturday · {minutes} minute · starts 2:00 PM PKT
             </p>
           </div>
 
@@ -98,7 +98,7 @@ const LiRoutine = ({ playbook, onChanged }) => {
             {day.streak > 0 && (
               <span className="flex items-center gap-1 rounded-full bg-orange-100 px-2.5 py-1 text-xs font-bold text-orange-700">
                 <LuFlame className="h-3.5 w-3.5" />
-                {day.streak} din
+                {day.streak} days
               </span>
             )}
 
@@ -148,7 +148,7 @@ const LiRoutine = ({ playbook, onChanged }) => {
 
       {/* ---------- Hafte ke kaam ---------- */}
       <div className="card p-5">
-        <h3 className="mb-3 text-sm font-bold text-slate-800">Hafte ke kaam</h3>
+        <h3 className="mb-3 text-sm font-bold text-slate-800">Weekly tasks</h3>
 
         <ul className="space-y-2">
           {playbook.weeklyTasks.map((w) => (
@@ -169,7 +169,7 @@ const LiRoutine = ({ playbook, onChanged }) => {
             onBlur={(e) => saveMarket(e.target.value)}
           />
           <p className="mt-1 text-xs text-slate-500">
-            Wohi mulk chunein jo email campaign me is hafte chal raha hai — dono ek saath lagein.
+            Pick the same country the email campaign is running this week — keep the two in step.
           </p>
         </div>
       </div>

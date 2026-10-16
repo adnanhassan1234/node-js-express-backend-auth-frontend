@@ -123,25 +123,25 @@ export const FB_TYPES = [
     key: 'groups',
     label: 'Groups',
     path: 'groups',
-    hint: 'Sab se kaam ka — local league aur club ke groups. Admin aksar wohi shakhs hota hai jo kit khareedta hai.',
+    hint: 'The most useful one — local league and club groups. The admin is often the person who buys the kit.',
   },
   {
     key: 'pages',
     label: 'Pages',
     path: 'pages',
-    hint: 'Club ka apna page. About me aksar email aur website hoti hai.',
+    hint: 'The club page itself. About usually has the email and website.',
   },
   {
     key: 'people',
     label: 'People',
     path: 'people',
-    hint: 'Shakhs khud — ohda chunein to naam ke saath wahi lafz dhoonde jate hain.',
+    hint: 'The person themselves — pick a role and it is searched alongside the name.',
   },
   {
     key: 'posts',
     label: 'Posts',
     path: 'posts',
-    hint: 'Taza baat — "new kit", "sponsor chahiye" jaisi posts.',
+    hint: 'What is happening now — posts like "new kit" or "looking for a sponsor".',
   },
 ];
 
@@ -199,7 +199,7 @@ export const googleSiteUrl = (site, terms = []) => {
 export const COMMENT_TEMPLATES = [
   {
     key: 'newkit',
-    when: 'Nayi kit ya jersey ki tasveer par',
+    when: 'On a new kit or jersey photo',
     text:
       'Great kit! 🔥 Quick question — is your club looking at custom uniforms for next ' +
       'season? We manufacture direct from our factory and can put together a free mock-up ' +
@@ -207,14 +207,14 @@ export const COMMENT_TEMPLATES = [
   },
   {
     key: 'win',
-    when: 'Match jeetne ya natije ki post par',
+    when: 'On a win or a result post',
     text:
       'Congrats on the win! 👏 If new kit is on the list for next season, happy to send a ' +
       'free design mock-up in your colours — straight from our factory, no obligation.',
   },
   {
     key: 'academy',
-    when: 'Academy, trials ya training ki post par',
+    when: 'On an academy, trials or training post',
     text:
       'Looks like a brilliant setup ⚽ If you ever need training kit or matchday sets for ' +
       'the squad, we make custom teamwear direct from our factory. Happy to help whenever ' +
@@ -222,7 +222,7 @@ export const COMMENT_TEMPLATES = [
   },
   {
     key: 'sponsor',
-    when: 'Sponsor ya fundraising maangne wali post par',
+    when: 'On a sponsor or fundraising post',
     text:
       'Great cause 👏 If kit is part of what you are raising for, we supply custom kits ' +
       'direct from our factory — happy to put together a free mock-up and a price so you ' +
@@ -230,7 +230,7 @@ export const COMMENT_TEMPLATES = [
   },
   {
     key: 'quote',
-    when: 'Jab wo khud kit ya supplier ki baat kar rahe hon',
+    when: 'When they are already talking about kit or suppliers',
     text:
       'Happy to help with this — we manufacture custom kits direct from our factory: ' +
       'jerseys, shorts, socks and training wear. Send us your crest and colours and we will ' +
@@ -238,14 +238,14 @@ export const COMMENT_TEMPLATES = [
   },
   {
     key: 'light',
-    when: 'Halka sa — jab ziyada baat nahi karni',
+    when: 'Light touch — when you do not want to say much',
     text:
       'Love the colours ⚽ We make custom kits — if you ever want a free mock-up in these ' +
       'colours, just say the word.',
   },
   {
     key: 'recommend',
-    when: 'Jab koi supplier ka mashwara maang raha ho',
+    when: 'When someone is asking for a supplier recommendation',
     text:
       'We manufacture custom kits direct from our factory in Sialkot — jerseys, shorts, ' +
       'socks and training wear. Happy to send a free mock-up in your colours so you can see ' +

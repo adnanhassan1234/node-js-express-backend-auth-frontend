@@ -23,6 +23,36 @@ import Spinner from '../Spinner';
 import Pagination from '../Pagination';
 import LiBuyerModal from './LiBuyerModal';
 
+/** Playbook: Step 2 ke kitne din baad follow-up jati hai */
+const FOLLOW_UP_AFTER = 7;
+
+/**
+ * Follow-up ka haal -- is buyer ko kya ja chuka hai.
+ *
+ * Yaad rakhne ka sawal yehi hota hai: "is ko follow-up bhej chuka hoon ya
+ * nahi?" Stage se iska jawab nahi milta (dono soorton me wo Connected hi
+ * rehta hai), is liye messageSent ki GINTI dekhni parti hai:
+ *
+ *   0 message  -> abhi kuch nahi gaya
+ *   1 message  -> sirf Step 2 gaya, follow-up baqi hai
+ *   2+ message -> follow-up ja chuki -- ab ruk jana hai
+ */
+const followUp = (buyer) => {
+  const sent = (buyer.activity || [])
+    .filter((a) => a.type === 'messageSent')
+    .map((a) => new Date(a.at))
+    .sort((a, b) => a - b);
+
+  if (sent.length === 0) return { state: 'none' };
+
+  const last = sent[sent.length - 1];
+  const days = daysFromToday(last);
+
+  if (sent.length >= 2) return { state: 'done', at: last, ago: Math.abs(days) };
+
+  return { state: 'waiting', at: last, dueIn: FOLLOW_UP_AFTER + days };
+};
+
 /**
  * Agla qadam kitna aham hai -- rang se.
  *
@@ -178,9 +208,9 @@ const LiPipeline = ({ playbook, onChanged }) => {
 
     const warning = selectAll
       ? 'Delete ALL ' + count + ' buyers matching the current filters?' +
-        '\n\nYe wapas nahi aayenge.'
+        '\n\nThis cannot be undone.'
       : 'Delete ' + count + ' selected buyer' + (count === 1 ? '' : 's') + '?' +
-        '\n\nYe wapas nahi aayenge.';
+        '\n\nThis cannot be undone.';
 
     if (!window.confirm(warning)) return;
 
@@ -313,8 +343,8 @@ const LiPipeline = ({ playbook, onChanged }) => {
     if (
       !window.confirm(
         'Restore from "' + file.name + '"?\n\n' +
-          'Jo buyers pehle se hain wo update ho jayenge aur unki activity mil jayegi. ' +
-          'Kuch delete nahi hoga.'
+          'Buyers that already exist will be updated and their activity merged. ' +
+          'Nothing is deleted.'
       )
     ) {
       e.target.value = '';
@@ -415,7 +445,7 @@ const LiPipeline = ({ playbook, onChanged }) => {
             onClick={() => setFilters((f) => ({ ...f, from: '', to: '' }))}
             className="mt-2 text-xs font-semibold text-brand-700 hover:underline"
           >
-            Tareekh ka filter hatayein
+            Clear date filter
           </button>
         )}
 
@@ -427,14 +457,14 @@ const LiPipeline = ({ playbook, onChanged }) => {
               onChange={(e) => setFilter('dueOnly', e.target.checked)}
               className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
             />
-            Sirf wo jin ka agla qadam due hai
+            Only those whose next step is due
           </label>
 
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              title="Sirf buyers ki saadi list (naam, organization, stage…). Poore backup ke liye Restore."
+              title="A plain list of buyers only (name, organization, stage…). For a full backup use Restore."
               className="btn-secondary py-1.5 text-xs"
             >
               <LuUpload className="h-4 w-4" />
@@ -484,7 +514,7 @@ const LiPipeline = ({ playbook, onChanged }) => {
                       <span className="min-w-0">
                         <span className="block text-sm font-semibold text-slate-800">Export CSV</span>
                         <span className="block text-xs text-slate-500">
-                          Sirf pipeline ki list — dekhne ya kisi ko bhejne ke liye
+                          The pipeline list only — to view or send to someone
                         </span>
                       </span>
                     </button>
@@ -503,8 +533,8 @@ const LiPipeline = ({ playbook, onChanged }) => {
                           Full backup (Excel)
                         </span>
                         <span className="block text-xs text-slate-500">
-                          Activity, Ask Zain, reports — sab kuch. Dusri machine par kaam le jana
-                          ho to yehi, CSV nahi.
+                          Activity, Ask Zain, reports — everything. Use this to move your work
+                          to another machine, not the CSV.
                         </span>
                       </span>
                     </button>
@@ -521,7 +551,7 @@ const LiPipeline = ({ playbook, onChanged }) => {
               type="button"
               onClick={() => restoreRef.current?.click()}
               disabled={busy}
-              title="Full backup (Excel) se sab kuch wapas — activity, Ask Zain, reports, daily"
+              title="Restore everything from a full backup (Excel) — activity, Ask Zain, reports, daily"
               className="btn-secondary py-1.5 text-xs"
             >
               <LuHardDriveDownload className="h-4 w-4" />
@@ -559,7 +589,7 @@ const LiPipeline = ({ playbook, onChanged }) => {
                 onClick={() => setSelectAll(true)}
                 className="ml-2 font-semibold text-brand-700 underline underline-offset-2 hover:text-brand-900"
               >
-                Saare {meta.totalRecords} chunein
+                Select all {meta.totalRecords}
               </button>
             )}
 
@@ -586,13 +616,13 @@ const LiPipeline = ({ playbook, onChanged }) => {
               disabled={marking || selectAll}
               title={
                 selectAll
-                  ? 'Saare rows par ek saath accepted lagana theek nahi — jin ne accept kiya sirf unhein chunein'
-                  : 'Chune hue buyers ko Connected karein aur accepted ginti me likhein'
+                  ? 'Marking every matching row as accepted is not safe — tick only the ones who actually accepted'
+                  : 'Move the selected buyers to Connected and record the accept'
               }
               className="btn-secondary py-1.5 text-xs"
             >
               <LuUserCheck className="h-4 w-4" />
-              {marking ? 'Saving...' : 'Accept ho gaya (' + selected.length + ')'}
+              {marking ? 'Saving...' : 'Accepted (' + selected.length + ')'}
             </button>
 
             <button
@@ -615,11 +645,11 @@ const LiPipeline = ({ playbook, onChanged }) => {
         ) : rows.length === 0 ? (
           <div className="p-10 text-center">
             <LuSearch className="mx-auto h-8 w-8 text-slate-300" />
-            <p className="mt-2 font-semibold text-slate-700">Koi buyer nahi mila</p>
+            <p className="mt-2 font-semibold text-slate-700">No buyers found</p>
             <p className="mt-1 text-sm text-slate-400">
               {filters.search || filters.stage !== 'All' || filters.dueOnly || filters.from || filters.to
-                ? 'Filters badal kar dekhein'
-                : 'Pehla buyer add karein — connection request bhejte waqt row banayein'}
+                ? 'Try changing the filters'
+                : 'Add your first buyer — create a row when you send a connection request'}
             </p>
           </div>
         ) : (
@@ -644,6 +674,7 @@ const LiPipeline = ({ playbook, onChanged }) => {
                     <th className="px-4 py-3 font-semibold">Type</th>
                     <th className="px-4 py-3 font-semibold">Stage</th>
                     <th className="px-4 py-3 font-semibold">Next Step</th>
+                    <th className="px-4 py-3 font-semibold">Follow-up</th>
                     <th className="px-4 py-3 font-semibold">Last Contact</th>
                     <th className="px-4 py-3 font-semibold">Action</th>
                   </tr>
@@ -695,7 +726,7 @@ const LiPipeline = ({ playbook, onChanged }) => {
                               href={profileUrl(b.linkedinUrl)}
                               target="_blank"
                               rel="noreferrer"
-                              title={'Profile kholein — ' + b.name}
+                              title={'Open profile — ' + b.name}
                               className="inline-flex items-center gap-1 rounded-md bg-brand-50 px-2 py-1 text-xs font-bold text-brand-700 transition hover:bg-brand-100"
                             >
                               <LuLinkedin className="h-3.5 w-3.5" />
@@ -706,11 +737,11 @@ const LiPipeline = ({ playbook, onChanged }) => {
                               href={searchUrl(b)}
                               target="_blank"
                               rel="noreferrer"
-                              title="Profile ka link save nahi — naam aur club se LinkedIn par dhoondein"
+                              title="No profile link saved — search LinkedIn by name and organization"
                               className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 transition hover:text-brand-700 hover:underline"
                             >
                               <LuSearch className="h-3.5 w-3.5" />
-                              Dhoondein
+                              Search
                             </a>
                           )}
                         </td>
@@ -754,6 +785,47 @@ const LiPipeline = ({ playbook, onChanged }) => {
                           )}
                         </td>
 
+                        {/*
+                          Follow-up ka khana. Sab se ahem baat "Follow-up sent"
+                          wala hara nishan hai -- usi se yaad rehta hai ke in
+                          logon ko dobara message nahi karna.
+                        */}
+                        <td className="px-4 py-3">
+                          {(() => {
+                            const f = followUp(b);
+
+                            if (f.state === 'none') {
+                              return <span className="text-xs text-slate-400">—</span>;
+                            }
+
+                            if (f.state === 'done') {
+                              return (
+                                <>
+                                  <p className="text-xs font-bold text-green-700">Follow-up sent</p>
+                                  <p className="text-xs text-slate-500">
+                                    {formatDate(f.at)} · {f.ago} day{f.ago === 1 ? '' : 's'} ago
+                                  </p>
+                                </>
+                              );
+                            }
+
+                            return (
+                              <>
+                                <p className="text-xs text-slate-600">Step 2 · {formatDate(f.at)}</p>
+                                <p
+                                  className={`text-xs ${
+                                    f.dueIn <= 0 ? 'font-bold text-red-600' : 'text-slate-400'
+                                  }`}
+                                >
+                                  {f.dueIn <= 0
+                                    ? 'Follow-up due'
+                                    : 'Follow-up in ' + f.dueIn + ' day' + (f.dueIn === 1 ? '' : 's')}
+                                </p>
+                              </>
+                            );
+                          })()}
+                        </td>
+
                         <td className="px-4 py-3 text-slate-600">
                           {b.lastContactDate ? formatDate(b.lastContactDate) : '—'}
                         </td>
@@ -771,13 +843,13 @@ const LiPipeline = ({ playbook, onChanged }) => {
                             value={b.stage}
                             onChange={(e) => changeStage(b, e.target.value)}
                             disabled={acting === b._id}
-                            title={playbook.nextActions?.[b.stage]?.hint || 'Stage badlein — ginti khud likh jati hai'}
+                            title={playbook.nextActions?.[b.stage]?.hint || 'Change the stage — the activity is recorded for you'}
                             className="input w-auto py-1 text-xs disabled:opacity-50"
                           >
                             {playbook.stages.map((stage) => (
                               <option key={stage} value={stage}>
                                 {stage === playbook.nextActions?.[b.stage]?.stage
-                                  ? stage + '  ← agla qadam'
+                                  ? stage + '  ← next step'
                                   : stage}
                               </option>
                             ))}
@@ -814,6 +886,7 @@ const LiPipeline = ({ playbook, onChanged }) => {
           onClose={() => setOpenId(null)}
           onSaved={afterChange}
           onDeleted={afterChange}
+          onChanged={afterChange}
         />
       )}
 

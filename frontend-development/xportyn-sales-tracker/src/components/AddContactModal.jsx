@@ -120,7 +120,7 @@ const AddContactModal = ({ onClose, onAdded }) => {
               Category <span className="text-red-500">*</span>
             </label>
             <select value={form.category} onChange={set('category')} className="input" required>
-              <option value="">Chunein...</option>
+              <option value="">Choose...</option>
               {CATEGORIES.map((c) => (
                 <option key={c} value={c}>
                   {c}

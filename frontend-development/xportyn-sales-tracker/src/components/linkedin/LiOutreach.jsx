@@ -11,6 +11,8 @@ import {
 
 import SearchSelect from '../SearchSelect';
 
+import { LuFileText } from 'react-icons/lu';
+
 import { linkedinApi } from '../../api/endpoints';
 import { getErrorMessage } from '../../api/client';
 
@@ -29,7 +31,7 @@ import { getErrorMessage } from '../../api/client';
  */
 const REPLY_STEP = {
   key: 'reply',
-  label: 'Unhone jawab diya',
+  label: 'They replied',
   activity: 'conversation',
   stage: 'In Conversation',
 };
@@ -44,7 +46,7 @@ const REPLY_STEP = {
  */
 const ACCEPT_STEP = {
   key: 'accepted',
-  label: 'Connection accept hui',
+  label: 'Connection accepted',
   activity: 'accepted',
   stage: 'Connected',
 };
@@ -107,11 +109,11 @@ const LiOutreach = ({ playbook, onChanged }) => {
 
   const markSent = async (step) => {
     if (!buyerId) {
-      toast.error('Pehle buyer chunein');
+      toast.error('Pick a buyer first');
       return;
     }
     if (!step.activity) {
-      toast('Is qadam ka koi record nahi rakha jata', { icon: 'ℹ️' });
+      toast('Nothing is recorded for this step', { icon: 'ℹ️' });
       return;
     }
 
@@ -151,9 +153,9 @@ const LiOutreach = ({ playbook, onChanged }) => {
             <SearchSelect
               value={buyerId}
               onChange={pickBuyer}
-              placeholder="— buyer chunein —"
-              searchPlaceholder="Naam, organization ya stage likhein…"
-              emptyText="Koi buyer nahi mila"
+              placeholder="— pick a buyer —"
+              searchPlaceholder="Type a name, organization or stage…"
+              emptyText="No buyer found"
               options={buyers.map((b) => ({
                 value: b._id,
                 label: b.name,
@@ -161,7 +163,7 @@ const LiOutreach = ({ playbook, onChanged }) => {
               }))}
               footer={
                 buyers.length >= BUYER_LIMIT
-                  ? 'Sirf pehle ' + BUYER_LIMIT + ' buyers — baqi Pipeline tab se khulenge'
+                  ? 'First ' + BUYER_LIMIT + ' buyers only — open the rest from the Pipeline tab'
                   : buyers.length + ' buyers'
               }
             />
@@ -180,8 +182,8 @@ const LiOutreach = ({ playbook, onChanged }) => {
 
         {buyerId ? (
           <p className="mt-2 text-xs text-slate-500">
-            Naam aur club khud bhar gaye. Ab koi bhi qadam bhej kar &quot;Mark as sent&quot; dabayein —
-            record isi buyer ke khilaf likha jayega.
+            Name and organization filled in. Send any step and hit &quot;Mark as sent&quot; —
+            the record goes against this buyer.
           </p>
         ) : (
           /*
@@ -190,8 +192,8 @@ const LiOutreach = ({ playbook, onChanged }) => {
            * tha; ab pehle hi bata dete hain aur button band rehta hai.
            */
           <p className="mt-2 rounded-lg bg-amber-50 p-2.5 text-xs font-medium text-amber-800">
-            Pehle upar se buyer chunein — tab hi &quot;Mark as sent&quot; kaam karega.
-            {buyers.length === 0 && ' Pipeline khali hai; pehle Pipeline tab se Add Buyer karein.'}
+            Pick a buyer above first — only then does &quot;Mark as sent&quot; work.
+            {buyers.length === 0 && ' The pipeline is empty; add a buyer from the Pipeline tab first.'}
           </p>
         )}
       </div>
@@ -230,7 +232,7 @@ const LiOutreach = ({ playbook, onChanged }) => {
                       type="button"
                       onClick={() => markSent(step)}
                       disabled={!buyerId || sending === step.key}
-                      title={buyerId ? 'Is buyer ke khilaf record likh do' : 'Pehle upar se buyer chunein'}
+                      title={buyerId ? 'Record this against the buyer' : 'Pick a buyer above first'}
                       className="btn-primary py-1 text-xs"
                     >
                       <LuSend className="h-3.5 w-3.5" />
@@ -266,12 +268,11 @@ const LiOutreach = ({ playbook, onChanged }) => {
               <div className="card border border-orange-200 bg-orange-50 border-l-4 border-l-[#F87405] p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <h3 className="text-sm font-bold text-slate-800">Unhone accept kar li?</h3>
+                    <h3 className="text-sm font-bold text-slate-800">Did they accept?</h3>
                     <p className="mt-0.5 text-xs text-slate-500">
-                      Stage <strong>Connected</strong> ho jayega aur report me &quot;Accepted&quot; ki
-                      ginti barhegi. Ek saath kai logon ko lagana ho to{' '}
-                      <strong>Pipeline</strong> tab me unke checkbox lagayein — wahan ek hi button se
-                      sab ho jate hain.
+                      The stage becomes <strong>Connected</strong> and the &quot;Accepted&quot; count
+                      goes up. To do several people at once, tick them in the{' '}
+                      <strong>Pipeline</strong> tab — one button handles them all.
                     </p>
                   </div>
 
@@ -279,12 +280,12 @@ const LiOutreach = ({ playbook, onChanged }) => {
                     type="button"
                     onClick={() => markSent(ACCEPT_STEP)}
                     disabled={!buyerId || sending === ACCEPT_STEP.key}
-                    title={buyerId ? 'Accepted likho aur stage Connected karo' : 'Pehle upar se buyer chunein'}
+                    title={buyerId ? 'Record the accept and move to Connected' : 'Pick a buyer above first'}
                     /* XPORTYN ka narangi -- btn-primary ka neela rang yahan hata diya */
                     className="btn-primary shrink-0 bg-[#F87405] py-1 text-xs hover:bg-[#d96304] active:bg-[#b85203]"
                   >
                     <LuUserCheck className="h-3.5 w-3.5" />
-                    {sending === ACCEPT_STEP.key ? 'Saving...' : 'Accept ho gaya'}
+                    {sending === ACCEPT_STEP.key ? 'Saving...' : 'Accepted'}
                   </button>
                 </div>
               </div>
@@ -294,10 +295,10 @@ const LiOutreach = ({ playbook, onChanged }) => {
               <div className="card border border-green-300 bg-green-50 border-l-4 border-l-green-500 p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <h3 className="text-sm font-bold text-slate-800">Unka jawab aa gaya?</h3>
+                    <h3 className="text-sm font-bold text-slate-800">Did they reply?</h3>
                     <p className="mt-0.5 text-xs text-slate-500">
-                      Sirf tab dabayein jab buyer ne <strong>khud</strong> reply kiya ho. Report me
-                      &quot;Real conversations&quot; ki ginti yehi hai — hamare bheje hue messages nahi.
+                      Only press this when the buyer replied <strong>themselves</strong>. This is what
+                      &quot;Real conversations&quot; counts — not the messages we send.
                     </p>
                   </div>
 
@@ -305,11 +306,11 @@ const LiOutreach = ({ playbook, onChanged }) => {
                     type="button"
                     onClick={() => markSent(REPLY_STEP)}
                     disabled={!buyerId || sending === REPLY_STEP.key}
-                    title={buyerId ? 'Real conversation likho aur stage In Conversation karo' : 'Pehle upar se buyer chunein'}
+                    title={buyerId ? 'Record a real conversation and move to In Conversation' : 'Pick a buyer above first'}
                     className="btn-primary shrink-0 border-green-600 bg-green-600 py-1 text-xs hover:bg-green-700"
                   >
                     <LuMessageCircleReply className="h-3.5 w-3.5" />
-                    {sending === REPLY_STEP.key ? 'Saving...' : 'Reply aaya'}
+                    {sending === REPLY_STEP.key ? 'Saving...' : 'They replied'}
                   </button>
                 </div>
               </div>
@@ -317,6 +318,64 @@ const LiOutreach = ({ playbook, onChanged }) => {
           </Fragment>
         );
       })}
+
+      {/*
+        Steps ke neeche, kyunke ye qadam nahi hain -- ye wo matn hai jo kabhi
+        kabhi chahiye hota hai. Pehle Step 4 me "[link to post]" likha tha aur
+        us ka koi link mojood hi nahi tha; ab Step 4 khud apni baat kehta hai
+        aur poora matn yahan tayyar rehta hai.
+      */}
+      {(playbook.resources || []).length > 0 && (
+        <div className="card p-5">
+          <div className="mb-1 flex items-center gap-2">
+            <LuFileText className="h-5 w-5 text-slate-600" />
+            <h3 className="text-sm font-bold text-slate-800">Ready-made text</h3>
+          </div>
+          <p className="mb-3 text-xs text-slate-500">
+            Not steps — text you need now and then. Copy and send.
+          </p>
+
+          <div className="space-y-3">
+            {playbook.resources.map((r) => (
+              <div key={r.key} className="rounded-lg border border-slate-200 p-3">
+                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-slate-700">{r.title}</p>
+                    <p className="text-[11px] text-slate-500">{r.when}</p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => copy('res-' + r.key, fill(r.text, name, club))}
+                    className="btn-secondary shrink-0 py-1 text-xs"
+                  >
+                    {copied === 'res-' + r.key
+                      ? <LuCheck className="h-3.5 w-3.5 text-green-600" />
+                      : <LuCopy className="h-3.5 w-3.5" />}
+                    {copied === 'res-' + r.key ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+
+                <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded bg-slate-50 p-2.5 font-sans text-sm leading-relaxed text-slate-800">
+                  {fill(r.text, name, club)}
+                </pre>
+
+                {/*
+                  Sab se ahem warning. Size chart ke numbers XPORTYN ki apni
+                  manufacturing par hote hain -- andaze ke numbers bhejna
+                  ghalat maloomat bhejna hai.
+                */}
+                {r.text.includes('[XPORTYN SIZE CHART') && (
+                  <p className="mt-2 rounded bg-amber-50 p-2 text-[11px] font-medium text-amber-800">
+                    The size chart line is a placeholder — get the real measurements from Zain and
+                    paste them in before you send this. Never guess the numbers.
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

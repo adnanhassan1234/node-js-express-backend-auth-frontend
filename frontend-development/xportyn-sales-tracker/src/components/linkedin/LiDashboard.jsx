@@ -1,24 +1,24 @@
 import { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { LuTriangleAlert, LuFlame, LuCircleCheck, LuArrowRight } from 'react-icons/lu';
+import { LuTriangleAlert, LuFlame, LuArrowRight } from 'react-icons/lu';
 
 import { linkedinApi } from '../../api/endpoints';
 import { getErrorMessage } from '../../api/client';
-import { progressColor, styleForStage } from '../../utils/linkedinStyles';
+import { styleForStage } from '../../utils/linkedinStyles';
 import Spinner from '../Spinner';
 import LiWeekNav, { isCurrentWeek } from './LiWeekNav';
 
 /**
- * LinkedIn ka Dashboard — hafte ke targets, pipeline ka haal, aur aaj ka kaam.
+ * LinkedIn ka Dashboard — hafte ka kaam, pipeline ka haal, aur aaj ka mamool.
  *
  * Sab se ahem cheez upar hai: connection request counter. LinkedIn hafte mein
  * 100 se ziyada requests par account rok deta hai, is liye ye sirf ginti nahi
  * — ye ek hifazati nishan hai.
  *
  * Layout ka usool: poora haal EK nazar me aa jaye, scroll kiye baghair.
- * Pehle har cheez apne poore chaure card me thi aur 6 target bars ek ke neeche
- * ek lagti thin -- do screen bhar jati thin. Ab targets jaali (grid) me hain
- * aur chhoti cheezein saath mila di gayi hain.
+ * Pehle har cheez apne poore chaure card me thi aur 6 bars ek ke neeche ek
+ * lagti thin -- do screen bhar jati thin. Ab ginti jaali (grid) me hai aur
+ * chhoti cheezein saath mila di gayi hain.
  */
 const LiDashboard = ({ playbook, onGoTab, week = '', onWeekChange }) => {
   const [stats, setStats] = useState(null);
@@ -51,7 +51,7 @@ const LiDashboard = ({ playbook, onGoTab, week = '', onWeekChange }) => {
   if (loading) return <Spinner label="Loading..." />;
   if (!stats) return <p className="text-slate-500">No data</p>;
 
-  const { weekCounts, targets, requests, month, pipeline } = stats;
+  const { weekCounts, requests, pipeline } = stats;
   const { activityLabels } = playbook;
 
   const done = day ? playbook.dailyTasks.filter((t) => day.tasks[t.key]).length : 0;
@@ -79,9 +79,9 @@ const LiDashboard = ({ playbook, onGoTab, week = '', onWeekChange }) => {
           {!current && (
             <span
               className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800"
-              title="Counter aur targets usi hafte ke hain. Pipeline, mahine ka target aur mamool hamesha aaj ka hai."
+              title="The counter and counts are for that week. Pipeline and routine are always today's."
             >
-              Guzra hafta
+              Past week
             </span>
           )}
         </div>
@@ -90,7 +90,7 @@ const LiDashboard = ({ playbook, onGoTab, week = '', onWeekChange }) => {
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Connection requests {current ? 'is hafte' : 'us hafte'}
+                Connection requests {current ? 'this week' : 'that week'}
               </p>
 
               <p className={`mt-0.5 text-3xl font-bold leading-none ${reqTone.text}`}>
@@ -104,9 +104,9 @@ const LiDashboard = ({ playbook, onGoTab, week = '', onWeekChange }) => {
                 */}
                 <span
                   className="ml-3 text-sm font-semibold text-slate-600"
-                  title="Dono ginti isi hafte ki hain. Accept aksar kuch din baad hota hai, is liye sharah taqreeban hai."
+                  title="Both counts are for this week. Accepts often come days later, so the rate is approximate."
                 >
-                  {weekCounts.accepted || 0} accept
+                  {weekCounts.accepted || 0} accepted
                   {rate !== null && <span className="font-medium text-slate-400"> · ~{rate}%</span>}
                 </span>
               </p>
@@ -115,16 +115,16 @@ const LiDashboard = ({ playbook, onGoTab, week = '', onWeekChange }) => {
             {requests.state === 'blocked' ? (
               <p className="flex items-center gap-1.5 text-sm font-bold text-red-700">
                 <LuTriangleAlert className="h-4 w-4" />
-                Hadd poori — is hafte aur na bhejein
+                Limit reached — send no more this week
               </p>
             ) : requests.state === 'warn' ? (
               <p className="flex items-center gap-1.5 text-sm font-bold text-amber-700">
                 <LuTriangleAlert className="h-4 w-4" />
-                Sirf {requests.left} baqi — ehtiyat se
+                Only {requests.left} left — go carefully
               </p>
             ) : (
-              <p className="text-xs font-medium text-slate-500" title="LinkedIn ki hadd 100/hafta — is se upar account ruk sakta hai">
-                {requests.left} aur bheji ja sakti hain
+              <p className="text-xs font-medium text-slate-500" title="LinkedIn's limit is 100/week — above that your account can be restricted">
+                {requests.left} more can be sent
               </p>
             )}
           </div>
@@ -138,44 +138,31 @@ const LiDashboard = ({ playbook, onGoTab, week = '', onWeekChange }) => {
         </div>
       </div>
 
-      {/* ================= Targets — jaali me, ek ke neeche ek nahi ================= */}
+      {/* ================= Hafte ka kaam ================= */}
+      {/*
+        Yahan pehle targets ka muqabla tha -- har ginti ke saath "/ 80" aur ek
+        bar. Hata diya: ab sirf ye dikhta hai ke kitna kaam hua.
+      */}
       <div className="card p-4">
         <h3 className="mb-3 text-sm font-bold text-slate-800">
-          {current ? 'Is hafte ke targets' : 'Us hafte ke targets'}
+          {current ? "This week's work" : "That week's work"}
         </h3>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {Object.entries(targets).map(([key, t]) => {
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {Object.keys(activityLabels).map((key) => {
             const value = weekCounts[key] || 0;
-            const hit = value >= t.min;
 
             return (
               <div
                 key={key}
-                className={`rounded-lg border p-3 ${hit ? 'border-green-200 bg-green-50/50' : 'border-slate-200'}`}
+                className={`rounded-lg border p-3 ${value > 0 ? 'border-slate-200' : 'border-slate-100 bg-slate-50/60'}`}
               >
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-xs font-medium leading-tight text-slate-600">
-                    {activityLabels[key]}
-                  </p>
-                  {hit && <LuCircleCheck className="h-4 w-4 shrink-0 text-green-600" />}
-                </div>
-
-                <p className="mt-1 leading-none">
-                  <span className={`text-xl font-bold ${hit ? 'text-green-700' : 'text-slate-800'}`}>
-                    {value}
-                  </span>
-                  <span className="ml-1 text-xs font-medium text-slate-400">
-                    / {t.min === t.max ? t.min : t.min + '–' + t.max}
-                  </span>
+                <p className="text-xs font-medium leading-tight text-slate-600">
+                  {activityLabels[key]}
                 </p>
-
-                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200/70">
-                  <div
-                    className={`h-full rounded-full transition-all ${progressColor(value, t.min)}`}
-                    style={{ width: Math.min(100, (value / t.min) * 100) + '%' }}
-                  />
-                </div>
+                <p className={`mt-1 text-2xl font-bold leading-none ${value > 0 ? 'text-slate-800' : 'text-slate-300'}`}>
+                  {value}
+                </p>
               </div>
             );
           })}
@@ -192,7 +179,7 @@ const LiDashboard = ({ playbook, onGoTab, week = '', onWeekChange }) => {
               onClick={() => onGoTab?.('pipeline')}
               className="flex items-center gap-1 text-xs font-semibold text-brand-700 hover:underline"
             >
-              Poora pipeline
+              Full pipeline
               <LuArrowRight className="h-3.5 w-3.5" />
             </button>
           </div>
@@ -230,34 +217,13 @@ const LiDashboard = ({ playbook, onGoTab, week = '', onWeekChange }) => {
           </div>
         </div>
 
-        {/* Daayen taraf do chhoti cheezein -- pehle ye alag poore card the */}
+        {/* Daayen taraf chhoti cheezein */}
         <div className="space-y-4">
-          <div className="card p-4">
-            <h3 className="mb-2 text-sm font-bold text-slate-800">
-              Is mahine ka target
-              <span className="ml-1.5 text-xs font-normal text-slate-400">Month 3</span>
-            </h3>
-
-            {[
-              ['Sample orders', month.sampleOrders, month.goal.sampleOrders],
-              ['Bulk quotes', month.bulkQuotes, month.goal.bulkOrders],
-            ].map(([label, value, goal]) => (
-              <div key={label} className="mb-2 last:mb-0">
-                <div className="mb-1 flex items-baseline justify-between text-xs">
-                  <span className="font-medium text-slate-600">{label}</span>
-                  <span className="text-slate-500">
-                    <strong className="text-slate-800">{value}</strong> / {goal}
-                  </span>
-                </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200/70">
-                  <div
-                    className={`h-full rounded-full ${progressColor(value, goal)}`}
-                    style={{ width: Math.min(100, (value / goal) * 100) + '%' }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
+          {/*
+            "Is mahine ka target" ka card yahan se hata diya gaya -- us me sirf
+            goal ka muqabla tha, aur mahine ki ginti ab Weekly Report ke
+            "Shuru se ab tak" wale hisse me mojood hai.
+          */}
 
           {/* Aaj ka kaam -- sirf tab jab waqai kuch due ho */}
           {(stats.dueToday > 0 || stats.overdue > 0) && (
@@ -266,7 +232,7 @@ const LiDashboard = ({ playbook, onGoTab, week = '', onWeekChange }) => {
               onClick={() => onGoTab?.('pipeline')}
               className="card w-full border-l-4 border-l-amber-400 bg-amber-50/60 p-3 text-left transition hover:bg-amber-100/60"
             >
-              <p className="text-xs font-bold text-amber-900">Aaj ka kaam</p>
+              <p className="text-xs font-bold text-amber-900">Due today</p>
               <p className="text-xs text-amber-800">
                 {stats.dueToday} due{stats.overdue > 0 ? `, ${stats.overdue} overdue` : ''} — pipeline dekhein
               </p>
@@ -280,7 +246,7 @@ const LiDashboard = ({ playbook, onGoTab, week = '', onWeekChange }) => {
               className="card w-full p-4 text-left transition hover:border-brand-300"
             >
               <div className="mb-2 flex items-center justify-between gap-2">
-                <h3 className="text-sm font-bold text-slate-800">Aaj ka mamool</h3>
+                <h3 className="text-sm font-bold text-slate-800">Today's routine</h3>
 
                 <div className="flex items-center gap-2">
                   {day.streak > 0 && (

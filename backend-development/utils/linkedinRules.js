@@ -34,10 +34,21 @@ const STAGES = [
    * hai jo ab band ki ja rahi hai.
    */
   'Withdrawn',
+
+  /**
+   * Connect ho gaya, do message bhi gaye, magar jawab kabhi nahi aaya.
+   *
+   * "Withdrawn" se alag hai: wahan request accept hi nahi hui thi. Yahan
+   * baat shuru hone ka mauqa mila tha -- unhone connect kiya -- magar age
+   * nahi barhi.
+   *
+   * "Not now" bhi nahi, kyunke wo UNKA jawab hota hai. Ye khamoshi hai.
+   */
+  'No Reply',
 ];
 
 /** Jin stages par baat khatam ho chuki hai */
-const CLOSED_STAGES = ['Won', 'Not now', 'Lost', 'Withdrawn'];
+const CLOSED_STAGES = ['Won', 'Not now', 'Lost', 'Withdrawn', 'No Reply'];
 
 /** Stage -> rang (frontend wahi naam istemal karta hai jo contacts me hain) */
 const STAGE_COLORS = {
@@ -53,6 +64,7 @@ const STAGE_COLORS = {
 
   // Slate -- ye nuqsan nahi, bas khamoshi hai. Laal rang ghalat paigham deta.
   Withdrawn: 'slate',
+  'No Reply': 'slate',
 };
 
 const BUYER_TYPES = [
@@ -106,32 +118,32 @@ const ACTIVITY_TYPES = [
  */
 const NEXT_ACTION = {
   'Request Sent': {
-    label: 'Accept ho gaya',
-    hint: 'Unhone connection accept kar li — stage Connected ho jayega. (3 hafte baad ye khud "Withdrawn" ho jati hai)',
+    label: 'Accepted',
+    hint: 'They accepted the connection — stage becomes Connected. (After 3 weeks an unaccepted request turns into "Withdrawn" on its own)',
     activity: 'accepted',
     stage: 'Connected',
   },
   Connected: {
-    label: 'Reply aaya',
-    hint: 'Unhone khud jawab diya — yehi "Real conversation" ginti jati hai',
+    label: 'They replied',
+    hint: 'They replied themselves — this is what counts as a "Real conversation"',
     activity: 'conversation',
     stage: 'In Conversation',
   },
   'In Conversation': {
-    label: 'Mock-up bheja',
-    hint: 'Mock-up bhej diya — stage Mock-up Sent ho jayega',
+    label: 'Mock-up sent',
+    hint: 'Mock-up has been sent — stage becomes Mock-up Sent',
     activity: 'mockupSent',
     stage: 'Mock-up Sent',
   },
   'Mock-up Sent': {
-    label: 'Sample order',
-    hint: '$200 ka sample order mil gaya',
+    label: 'Sample ordered',
+    hint: 'They ordered the $200 sample',
     activity: 'sampleOrdered',
     stage: 'Sample Ordered',
   },
   'Sample Ordered': {
-    label: 'Bulk quote bheji',
-    hint: 'Poori team ke order ka quote bhej diya',
+    label: 'Bulk quote sent',
+    hint: 'Quote sent for the full squad order',
     activity: 'bulkQuoteSent',
     stage: 'Bulk Quote Sent',
   },
@@ -151,7 +163,18 @@ const NEXT_ACTION = {
  */
 const NEXT_STEP_DAYS = {
   'Request Sent': null,
-  Connected: 5,
+
+  /*
+   * 7, 5 nahi -- aur ye playbook ke Step 4 se jura hua hai.
+   *
+   * Connected hote hi Step 2 chala jata hai, to agla qadam follow-up hai,
+   * aur playbook kehta hai wo 7 din khamoshi ke baad jati hai. Pehle yahan
+   * 5 tha aur table ke do column do alag tareekhein dikhate the -- Next Step
+   * 18 Oct kehta tha aur Follow-up 20 Oct.
+   *
+   * Badlein to LiPipeline ka FOLLOW_UP_AFTER bhi wahi karna hoga.
+   */
+  Connected: 7,
   'In Conversation': 3,
   'Mock-up Sent': 5,
   'Sample Ordered': 7,
@@ -161,6 +184,7 @@ const NEXT_STEP_DAYS = {
   'Not now': null,
   Lost: null,
   Withdrawn: null,
+  'No Reply': null,
 };
 
 /**
@@ -178,6 +202,25 @@ const nextStepFor = (stage, from = new Date()) => {
   d.setHours(0, 0, 0, 0);
 
   return d;
+};
+
+/**
+ * Stage par pohanchte hi jo kaam HO CHUKA hota hai.
+ *
+ * "Connected" ka matlab is kaam me sirf "unhone accept kiya" nahi hai. Jab
+ * koi accept karta hai to usi waqt Step 2 (shukriya + ek sawal) bhi bhej diya
+ * jata hai -- dono ek hi lamhe ka kaam hain.
+ *
+ * Pehle app ko iska pata nahi chalta tha, aur do nuqsan hote the:
+ *   1. modal wohi Step 2 dobara dikhata raha, halanke wo ja chuka tha
+ *   2. hafte ki ginti me wo message gina hi nahi gaya -- 8 logon ko message
+ *      jane ke bawajood report me 1 likha tha
+ *
+ * Connection request ke saath note nahi jata (LinkedIn wo option hamesha nahi
+ * deta), is liye "Request Sent" par aisa kuch nahi hai.
+ */
+const STAGE_IMPLIES = {
+  Connected: ['messageSent'],
 };
 
 /** Stage badalne par khud ba khud kaunsi activity likhi jaye */
@@ -244,7 +287,7 @@ const OUTREACH_STEPS = [
   },
   {
     key: 'step1b',
-    label: 'Step 1b — Connection note (club ko email ja chuki hai)',
+    label: 'Step 1b — Connection note (club already emailed)',
     when: 'Day 0',
     activity: 'requestSent',
     stage: 'Request Sent',
@@ -257,8 +300,8 @@ const OUTREACH_STEPS = [
   },
   {
     key: 'step2',
-    label: 'Step 2 — Shukriya + ek sawal',
-    when: 'Accept hone ke 1–2 din baad',
+    label: 'Step 2 — Thanks + one question',
+    when: '1–2 days after they accept',
 
     /*
      * Ye hamara message hai. Stage 'Connected' hi rehta hai aur ginti
@@ -276,8 +319,8 @@ const OUTREACH_STEPS = [
   },
   {
     key: 'step3',
-    label: 'Step 3 — Free mock-up ki peshkash',
-    when: 'Jab wo jawab dein',
+    label: 'Step 3 — Offer a free mock-up',
+    when: 'When they reply',
     activity: 'mockupOffered',
     stage: null, // peshkash se stage nahi badalta -- mock-up bhejne par badlega
     body:
@@ -291,25 +334,28 @@ const OUTREACH_STEPS = [
   },
   {
     key: 'step4',
-    label: 'Step 4 — Ek kaam ki follow-up (7 din khamoshi ke baad)',
-    when: '7 din jawab na aaye',
+    label: 'Step 4 — Useful follow-up (after 7 days of silence)',
+    when: 'No reply for 7 days',
 
     // Ye bhi hamara message hai -- pehle iska koi record nahi rakha jata tha
     activity: 'messageSent',
     stage: null,
     body:
-      'Hi [Name], I made a short guide on ordering youth kit sizes for U8–U16 ' +
-      'squads. Thought it might save you time this season: [link to post]. ' +
-      'No reply needed.',
+      'Hi [Name], one thing that saves clubs a re-order: for U8–U16, size on ' +
+      'chest and height rather than age — and for the 13+ group order one size ' +
+      'up, they grow mid-season. Happy to send our full size chart if that is ' +
+      'useful. No reply needed.',
     urdu:
-      'Maine U8–U16 teams ke sizes order karne par chhota sa guide banaya hai, ' +
-      'shayad is season aapka waqt bache: [post ka link]. Jawab ki zaroorat nahi.',
-    note: 'Is ke baad ruk jayein — do messages se ziyada nahi.',
+      'Ek baat jo clubs ko dobara order karne se bachati hai: U8–U16 ke liye ' +
+      'umar ke bajaye chest aur height par size lein — aur 13+ walon ko ek size ' +
+      'bara dein, wo season ke beech barh jate hain. Poora size chart chahiye ' +
+      'to bhej dunga. Jawab ki zaroorat nahi.',
+    note: 'Stop after this — never more than two messages.',
   },
   {
     key: 'step5',
-    label: 'Step 5 — $200 sample ki peshkash',
-    when: 'Mock-up pasand aane ke baad',
+    label: 'Step 5 — Offer the $200 sample',
+    when: 'After they like the mock-up',
     activity: 'sampleOrdered',
     stage: 'Sample Ordered',
     body:
@@ -341,43 +387,118 @@ const REPLY_GUIDE = [
     theySay: '"How much for 15 kits?"',
     reply:
       "Depends on design and fabric; I'll get you an exact quote within 1 " +
-      'business day. — phir tadaad, sizes aur deadline poochhein.',
+      'business day. — then ask for quantity, sizes and deadline.',
     askZain: true,
-    askZainFor: 'qeemat',
+    askZainFor: 'pricing',
   },
   {
     theySay: '"Is shipping included in the $200?"',
     reply:
       "Shipping is separate and depends on your country; I'll confirm the exact cost.",
     askZain: true,
-    askZainFor: 'shipping ka kharcha',
+    askZainFor: 'shipping cost',
   },
   {
     theySay: '"We\'re sorted this season"',
     reply:
-      'Shukriya kahein, poochhein ke agle season ki kits kab lenge, aur 2 mahine ' +
-      'pehle ka reminder laga dein.',
+      'Say thanks, ask when they will sort kits for next season, and set a ' +
+      'reminder 2 months before.',
     askZain: false,
   },
   {
     theySay: '"Is ordering from Pakistan risky?"',
     reply:
-      'Pehle free mock-up, bare order se pehle sample, tracked DHL/FedEx, bank ' +
-      'transfer ya card, aur export paperwork shamil.',
+      'Free mock-up first, a sample before any big order, tracked DHL/FedEx, ' +
+      'bank transfer or card, and export paperwork included.',
     askZain: false,
   },
   {
     theySay: '"Not interested" / "Stop"',
     reply:
-      'No problem, thanks for letting me know. — Lost mark karein, dobara kabhi ' +
-      'message na karein.',
+      'No problem, thanks for letting me know. — mark as Lost, never message ' +
+      'them again.',
     askZain: false,
   },
   {
-    theySay: 'Discount, guarantee ya free sample ki farmaish',
+    theySay: 'Asking for a discount, guarantee or free sample',
     reply: "Let me check with our founder.",
     askZain: true,
     askZainFor: 'discount / guarantee',
+  },
+];
+
+/**
+ * Tayyar matn jo aksar chahiye hota hai.
+ *
+ * Step 4 me pehle "[link to post]" likha tha -- ek khali jagah jis ka koi
+ * link mojood hi nahi tha. Ab Step 4 khud apni baat keh deta hai, aur agar
+ * buyer kahe "bhej dein" to poora matn yahan tayyar hai.
+ *
+ * SIZE CHART KE NUMBERS JAAN BOOJH KAR KHALI HAIN. Wo XPORTYN ki apni
+ * manufacturing par hote hain, aur andaze ke numbers bhejna ghalat maloomat
+ * bhejna hai -- is se buyer ka bharosa jata hai. Zain se asal chart le kar
+ * ek dafa yahan daal dein.
+ */
+const RESOURCES = [
+  {
+    key: 'sizeGuide',
+    title: 'Youth kit sizing — send on request',
+    when: 'When they ask for the size chart or details',
+    text:
+      'Happy to help — here is what we tell clubs ordering for U8–U16 squads.\n' +
+      '\n' +
+      '1. Size on chest and height, not age. Two U12 players can be three ' +
+      'sizes apart. Age is the most common reason clubs end up re-ordering.\n' +
+      '\n' +
+      '2. For the 13+ group, order one size up. They grow through the season ' +
+      'and a tight kit by February means a mid-season re-order.\n' +
+      '\n' +
+      '3. Collect sizes about 6 weeks before the season. Any later and you ' +
+      'are choosing between rushing production or starting the season in old ' +
+      'kit.\n' +
+      '\n' +
+      '4. Add roughly 10% spare in your two most common sizes. New players ' +
+      'join, kits get lost, and a small buffer is far cheaper than a second ' +
+      'production run.\n' +
+      '\n' +
+      '5. If you are unsure, we can send a sample set to measure against ' +
+      'before you commit to the full order.\n' +
+      '\n' +
+      '[XPORTYN SIZE CHART — paste the real measurements here]\n' +
+      '\n' +
+      'If it helps, our designers can also put together a free mock-up of a ' +
+      '[Club] kit in your colours, no obligation.',
+  },
+  {
+    key: 'sizeGuidePost',
+    title: 'LinkedIn post — publish once',
+    when: 'Publish once on your own profile',
+    text:
+      'Ordering kit for a youth squad? Four things that save clubs a ' +
+      're-order.\n' +
+      '\n' +
+      'After years of making kits for grassroots clubs and academies, the ' +
+      'same four mistakes come up again and again:\n' +
+      '\n' +
+      '1. Sizing by age instead of chest and height. Two U12 players can be ' +
+      'three sizes apart.\n' +
+      '\n' +
+      '2. Forgetting that the 13+ group grows mid-season. Order one size up ' +
+      'for them.\n' +
+      '\n' +
+      '3. Collecting sizes too late. Six weeks before the season is the ' +
+      'sweet spot.\n' +
+      '\n' +
+      '4. Ordering exactly the squad number. Add about 10% spare in your two ' +
+      'most common sizes — new players join and kits go missing.\n' +
+      '\n' +
+      'None of this is complicated, but getting it wrong costs a second ' +
+      'production run and a month of the season.\n' +
+      '\n' +
+      'Happy to share our full size chart with any club that wants it — just ' +
+      'drop me a message.\n' +
+      '\n' +
+      '#grassrootsfootball #youthsoccer #soccerkit #teamwear',
   },
 ];
 
@@ -456,17 +577,17 @@ const EXTRA_SEARCH = {
 /* ================================================================== */
 
 const DAILY_TASKS = [
-  { key: 'replies', minutes: 15, label: 'Kal ke har message aur connection note ka jawab', amount: 'Sab' },
-  { key: 'comments', minutes: 15, label: "Zain ki nayi post par comment, phir 5 buyer posts par", amount: '6 comments' },
-  { key: 'find', minutes: 20, label: 'Naye khareedar dhoondein aur note ke saath request bhejein', amount: '15–20' },
-  { key: 'sequence', minutes: 15, label: 'Naye connections ko Step 2; 7 din se khamosh logon ko Step 4', amount: '—' },
-  { key: 'tracker', minutes: 10, label: 'Pipeline tracker update karein', amount: '—' },
+  { key: 'replies', minutes: 15, label: 'Reply to yesterday\'s messages and connection notes', amount: 'All' },
+  { key: 'comments', minutes: 15, label: "Comment on Zain's new post, then on 5 buyer posts", amount: '6 comments' },
+  { key: 'find', minutes: 20, label: 'Find new buyers and send requests', amount: '15–20' },
+  { key: 'sequence', minutes: 15, label: 'Step 2 to new connections; Step 4 to anyone silent for 7 days', amount: '—' },
+  { key: 'tracker', minutes: 10, label: 'Update the pipeline tracker', amount: '—' },
 ];
 
 const WEEKLY_TASKS = [
-  { day: 'Monday', label: "Is hafte ka market chunein (email campaign wala hi mulk)" },
-  { day: 'Wednesday', label: '3 hafte se purani, accept na hui requests wapas lein' },
-  { day: 'Saturday', label: 'Zain ko hafte ki report bhejein' },
+  { day: 'Monday', label: "Pick this week's market (same country as the email campaign)" },
+  { day: 'Wednesday', label: 'Withdraw requests older than 3 weeks that were never accepted' },
+  { day: 'Saturday', label: 'Send Zain the weekly report' },
 ];
 
 /* ================================================================== */
@@ -474,27 +595,27 @@ const WEEKLY_TASKS = [
 /* ================================================================== */
 
 const RULES = [
-  'Koi automation tool, bot ya browser extension nahi — sab kuch haath se type karein. LinkedIn in par pabandi lagata hai.',
-  'Hafte mein 100 se ziyada connection requests nahi.',
-  'Pehle message mein lamba sales pitch ya price list kabhi nahi.',
-  'Do messages ka jawab na aaye to ruk jayein.',
-  'Koi mana kar de to foran ruk jayein.',
-  'Qeemat, discount, delivery date ya guarantee ka wada nahi — jab tak Zain pakka na kare.',
-  'Sirf wo kits, clubs aur tasveerein dikhayein jin ki ijazat ho.',
-  'Hamesha sach batayein ke aap XPORTYN, Sialkot, Pakistan se hain.',
+  'No automation tools, bots or browser extensions — type everything by hand. LinkedIn bans accounts for these.',
+  'Never more than 100 connection requests a week.',
+  'Never a long sales pitch or price list in the first message.',
+  'If two messages get no reply, stop.',
+  'If someone says no, stop immediately.',
+  'Never promise a price, discount, delivery date or guarantee until Zain confirms it.',
+  'Only show kits, clubs and photos you are allowed to show.',
+  'Always be upfront that you are from XPORTYN, Sialkot, Pakistan.',
 ];
 
 const PROFILE_CHECKLIST = [
-  { key: 'photo', label: 'Saaf, muskurati tasveer — saada background, logo nahi' },
+  { key: 'photo', label: 'Clear, smiling photo — plain background, no logo' },
   {
     key: 'headline',
-    label: 'Headline lagayein',
+    label: 'Set your headline',
     value: 'Sales Manager, XPORTYN · Custom football kits for clubs & schools · MOQ 10 · Free mock-up',
   },
-  { key: 'banner', label: 'Banner — wahi kit photo banner jo Zain ki profile par hai' },
-  { key: 'role', label: 'Current role: XPORTYN (Private) Limited, company page se jura, 3 lines kaam ka bayan' },
-  { key: 'featured', label: 'Featured: $200 sample page, quote page, aur kits ki 2 posts' },
-  { key: 'contact', label: 'Contact info: kaam wali email aur WhatsApp number' },
+  { key: 'banner', label: "Banner — the same kit photo banner as Zain's profile" },
+  { key: 'role', label: 'Current role: XPORTYN (Private) Limited, linked to the company page, 3 lines about the work' },
+  { key: 'featured', label: 'Featured: $200 sample page, quote page, and 2 posts of kits' },
+  { key: 'contact', label: 'Contact info: work email and WhatsApp number' },
 ];
 
 /* ================================================================== */
@@ -559,6 +680,7 @@ module.exports = {
   ACTIVITY_TYPES,
   ACTIVITY_LABELS,
   STAGE_ACTIVITY,
+  STAGE_IMPLIES,
   NEXT_ACTION,
   NEXT_STEP_DAYS,
   nextStepFor,
@@ -568,6 +690,7 @@ module.exports = {
   MONTHLY_GOAL,
   OUTREACH_STEPS,
   REPLY_GUIDE,
+  RESOURCES,
   SEARCH_HELPER,
   EXTRA_SEARCH,
   DAILY_TASKS,

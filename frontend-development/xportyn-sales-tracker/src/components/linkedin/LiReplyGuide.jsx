@@ -28,7 +28,7 @@ const LiReplyGuide = ({ playbook, onChanged }) => {
   };
 
   const askZain = async (row, i) => {
-    const buyerName = window.prompt('Kis buyer ka sawal hai? (khali chhor sakte hain)') ?? '';
+    const buyerName = window.prompt('Which buyer is this about? (can be left blank)') ?? '';
 
     setAdding(i);
 
@@ -52,8 +52,8 @@ const LiReplyGuide = ({ playbook, onChanged }) => {
     <div className="space-y-4">
       <div className="card p-4">
         <p className="text-sm text-slate-600">
-          Sirf wo baatein kahein jo XPORTYN ne pakki ki hain. Baqi har cheez ka jawab dene se pehle
-          Zain se poochhein — peeli rows wohi hain.
+          Only say what XPORTYN has confirmed. For anything else, ask Zain before you answer —
+          those are the yellow rows.
         </p>
       </div>
 
@@ -64,7 +64,7 @@ const LiReplyGuide = ({ playbook, onChanged }) => {
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Wo kahen</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">They say</p>
               <p className="mt-0.5 font-bold text-slate-800">{row.theySay}</p>
 
               <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Aap kahein</p>
@@ -94,7 +94,7 @@ const LiReplyGuide = ({ playbook, onChanged }) => {
           {row.askZain && (
             <p className="mt-3 flex items-center gap-1.5 border-t border-amber-200 pt-2 text-xs font-bold text-amber-800">
               <LuTriangleAlert className="h-3.5 w-3.5" />
-              Pehle Zain se poochhein{row.askZainFor ? ' — ' + row.askZainFor : ''}
+              Ask Zain first{row.askZainFor ? ' — ' + row.askZainFor : ''}
             </p>
           )}
         </div>

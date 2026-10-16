@@ -16,7 +16,7 @@ import { COUNTRIES, PRIMARY_MARKETS, COUNTRY_ALIASES } from '../utils/countries'
  *    import hui rows me "Sydney, Australia" jaisi cheezein maujood hain, aur
  *    unhein zabardasti badalna ghalat hoga.
  */
-const CountrySelect = ({ value, onChange, placeholder = 'Country chunein' }) => {
+const CountrySelect = ({ value, onChange, placeholder = 'Choose a country' }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [highlight, setHighlight] = useState(0);
@@ -142,13 +142,13 @@ const CountrySelect = ({ value, onChange, placeholder = 'Country chunein' }) => 
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder="Mulk ka naam likhein…"
+              placeholder="Type a country name…"
               className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
             />
             <button
               type="button"
               onClick={() => setOpen(false)}
-              title="Band karein"
+              title="Close"
               className="shrink-0 text-slate-400 transition hover:text-slate-700"
             >
               <LuX className="h-4 w-4" />
@@ -157,13 +157,13 @@ const CountrySelect = ({ value, onChange, placeholder = 'Country chunein' }) => 
 
           <div className="max-h-56 overflow-y-auto py-1">
             {options.length === 0 ? (
-              <p className="px-3 py-2 text-xs text-slate-400">Koi mulk nahi mila</p>
+              <p className="px-3 py-2 text-xs text-slate-400">No country found</p>
             ) : (
               <>
                 {pinned.length > 0 && (
                   <>
                     <p className="px-3 pb-0.5 pt-1 text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                      Playbook ke markets
+                      Playbook markets
                     </p>
                     {pinned.map((c, i) => row(c, i))}
                   </>
@@ -172,7 +172,7 @@ const CountrySelect = ({ value, onChange, placeholder = 'Country chunein' }) => 
                 {rest.length > 0 && (
                   <>
                     <p className="mt-1 border-t border-slate-100 px-3 pb-0.5 pt-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                      Sab mulk
+                      All countries
                     </p>
                     {rest.map((c, i) => row(c, pinned.length + i))}
                   </>
@@ -181,7 +181,7 @@ const CountrySelect = ({ value, onChange, placeholder = 'Country chunein' }) => 
                 {custom && (
                   <>
                     <p className="mt-1 border-t border-slate-100 px-3 pb-0.5 pt-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                      Jaisa likha hai
+                      As typed
                     </p>
                     {row(custom, flat.length)}
                   </>
@@ -196,7 +196,7 @@ const CountrySelect = ({ value, onChange, placeholder = 'Country chunein' }) => 
               onClick={() => pick('')}
               className="w-full border-t border-slate-200 px-3 py-1.5 text-left text-xs font-semibold text-red-600 transition hover:bg-red-50"
             >
-              Country hata dein
+              Clear country
             </button>
           )}
         </div>

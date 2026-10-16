@@ -30,6 +30,9 @@ router.patch('/api/linkedin/day', authMiddleware, linkedinController.updateDay);
 /* ---------------------- REPORT -------------------------- */
 router.get('/api/linkedin/report/preview', authMiddleware, linkedinController.previewReport);
 router.post('/api/linkedin/report', authMiddleware, linkedinController.saveReport);
+// Shuru se ab tak ka hisaab
+router.get('/api/linkedin/report/overall', authMiddleware, linkedinController.overallReport);
+
 router.get('/api/linkedin/reports', authMiddleware, linkedinController.listReports);
 router.delete('/api/linkedin/reports/:id', authMiddleware, linkedinController.deleteReport);
 

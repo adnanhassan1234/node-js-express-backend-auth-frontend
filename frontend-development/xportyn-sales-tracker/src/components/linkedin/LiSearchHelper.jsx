@@ -53,12 +53,12 @@ const LiSearchHelper = ({ playbook }) => {
     <div className="space-y-4">
       <div className="card p-4">
         <p className="text-sm text-slate-600">
-          Club ka page nahi — <strong>wo shakhs</strong> dhoondein jo kit khareedta hai. Chhote clubs
-          me ye aksar volunteer hota hai.
+          Not the club page — find <strong>the person</strong> who buys the kit. At small clubs
+          this is often a volunteer.
         </p>
         <p className="mt-1.5 text-xs text-slate-500">
-          Search bar me job title aur search word likhein → <strong>People</strong> chunein → phir
-          Location se filter karein. Club ya school ke page ka <strong>People</strong> tab bhi kaam ka hai.
+          Type the job title and search word in the search bar → pick <strong>People</strong> → then
+          filter by Location. The <strong>People</strong> tab on a club or school page is useful too.
         </p>
       </div>
 
@@ -118,7 +118,7 @@ const LiSearchHelper = ({ playbook }) => {
                 className="btn-primary shrink-0 py-1 text-xs"
               >
                 <LuExternalLink className="h-3.5 w-3.5" />
-                LinkedIn par kholein
+                Open on LinkedIn
               </a>
             </div>
           </div>
@@ -136,9 +136,9 @@ const LiSearchHelper = ({ playbook }) => {
           </div>
 
           <p className="mb-3 text-xs text-slate-500">
-            Upar wali table har qism ke apne titles deti hai. Ye khuli hai — <strong>koi bhi title
-            kisi bhi lafz ke saath</strong> mila lein. Senior log (CEO, President, Academy Director)
-            aur academy wale alfaaz yahan hain.
+            The table above gives each buyer type its own titles. This one is open — <strong>any title
+            with any word</strong>. Senior people (CEO, President, Academy Director)
+            and academy words are here.
           </p>
 
           <div className="grid gap-3 sm:grid-cols-2">
@@ -178,18 +178,18 @@ const LiSearchHelper = ({ playbook }) => {
               className="btn-primary shrink-0 py-1 text-xs"
             >
               <LuExternalLink className="h-3.5 w-3.5" />
-              LinkedIn par kholein
+              Open on LinkedIn
             </a>
           </div>
         </div>
       )}
 
       <div className="card border-l-4 border-l-amber-400 bg-amber-50/40 p-4">
-        <p className="text-sm font-semibold text-amber-900">Contact karne se pehle</p>
+        <p className="text-sm font-semibold text-amber-900">Before you reach out</p>
         <p className="mt-1 text-xs leading-relaxed text-amber-800">
-          Email campaign ki list dekh lein. Agar us club ko XPORTYN ki email ja chuki hai to
-          connection note <strong>1b</strong> istemal karein, <strong>1a</strong> nahi. Aur ek shakhs
-          ko do XPORTYN accounts se kabhi message na karein.
+          Check the email campaign list. If XPORTYN has already emailed that club, use
+          connection note <strong>1b</strong>, not <strong>1a</strong>. And never message one
+          person from two XPORTYN accounts.
         </p>
       </div>
     </div>
