@@ -901,6 +901,148 @@ const getAllTemplates = async (req, res) => {
 /*  10. DASHBOARD STATS                                                */
 /* ================================================================== */
 
+/**
+ * Email outreach ki poori report.
+ *
+ * LinkedIn wali report ACTIVITY se banti hai -- wahan har kaam ka alag record
+ * hota hai. Yahan aisa nahi: contact par sirf uska MAUJOODA status hota hai,
+ * aur `emailHistory` lagbhag khali hai (194 me se 1 par). Is liye yahan jo bhi
+ * nikala ja sakta hai wo status aur tareekhon se nikala gaya hai.
+ *
+ * Is ki ek asli hadd hai, jo report me saaf likhi jani chahiye: ye nahi bataya
+ * ja sakta ke "kul kitni Follow-up 1 bheji gayin". Jo contact ab "No Reply"
+ * par hai wo Email Sent -> FU1 -> FU2 se guzra hoga, magar uska nishan kahin
+ * nahi bacha. Jo ginti yahan hai wo "is waqt kitne kis haal me hain" hai.
+ */
+const getOutreachReport = async (req, res) => {
+  try {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+
+    const daysAgo = (n) => new Date(Date.now() - n * 24 * 60 * 60 * 1000);
+
+    const inDays = (n) => {
+      const d = new Date();
+      d.setDate(d.getDate() + n);
+      d.setHours(23, 59, 59, 999);
+      return d;
+    };
+
+    const [total, byStatus, noEmail, replyRows, dueToday, overdue, upcoming, week, month, first] =
+      await Promise.all([
+        contactModel.countDocuments(),
+
+        contactModel.aggregate([{ $group: { _id: '$status', n: { $sum: 1 } } }]),
+
+        contactModel.countDocuments({
+          $or: [{ email: '' }, { email: null }, { hasEmail: false }],
+        }),
+
+        /* Jawab: insaan ka jawab aur auto-reply alag ginte hain */
+        contactModel
+          .find({ 'replies.0': { $exists: true } }, 'replies')
+          .lean(),
+
+        contactModel.countDocuments({
+          nextFollowUpDate: { $gte: startOfToday, $lte: endOfToday },
+        }),
+
+        contactModel.countDocuments({
+          nextFollowUpDate: { $ne: null, $lt: startOfToday },
+        }),
+
+        contactModel.countDocuments({
+          nextFollowUpDate: { $gt: endOfToday, $lte: inDays(7) },
+        }),
+
+        /*
+         * "Is hafte email gayi" -- lastContactDate se. Ye asal me "jin ka
+         * AAKHRI raabta is hafte hua" hai. Jis ko is hafte do email gayin wo
+         * ek hi dafa ginta hai, is liye ye kam se kam ki ginti hai.
+         */
+        contactModel.countDocuments({ lastContactDate: { $gte: daysAgo(7) } }),
+        contactModel.countDocuments({ lastContactDate: { $gte: daysAgo(30) } }),
+
+        contactModel
+          .findOne({ lastContactDate: { $ne: null } }, 'lastContactDate')
+          .sort({ lastContactDate: 1 })
+          .lean()
+          .then((c) => (c ? c.lastContactDate : null)),
+      ]);
+
+    const status = {};
+    STATUSES.forEach((s) => { status[s] = 0; });
+    byStatus.forEach((r) => { status[r._id] = r.n; });
+
+    const notContacted = status['Not Contacted'] || 0;
+
+    /* Jinhone jawab diya -- "Deal Closed" bhi jawab dene ke baad hi aata hai */
+    const replied = (status.Replied || 0) + (status['Deal Closed'] || 0);
+    const contacted = total - notContacted;
+
+    /* Insaan ke jawab -- auto-reply (out of office wagera) alag */
+    let humanReplies = 0;
+    let autoReplies = 0;
+    let contactsWithHumanReply = 0;
+
+    replyRows.forEach((c) => {
+      const human = (c.replies || []).filter((r) => !r.isAutoReply);
+      humanReplies += human.length;
+      autoReplies += (c.replies || []).length - human.length;
+      if (human.length) contactsWithHumanReply += 1;
+    });
+
+    const rate = (part, whole) => (whole > 0 ? Math.round((part / whole) * 100) : null);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        since: first,
+
+        totals: {
+          all: total,
+          contacted,
+          notContacted,
+          noEmail,
+        },
+
+        byStatus: status,
+        replied,
+
+        replies: {
+          contacts: contactsWithHumanReply,
+          human: humanReplies,
+          auto: autoReplies,
+        },
+
+        followUps: { dueToday, overdue, upcoming },
+
+        /* Hafte aur mahine me kitne contacts ko email gayi */
+        activity: { week, month },
+
+        /*
+         * Reply rate STATUS se nikalti hai, inbox se nahi.
+         *
+         * Wajah: reply detection har jawab nahi pakarti (filters, plus-
+         * addressing, spam folder). Abhi 4 contacts "Replied" par hain
+         * magar inbox se sirf 1 pakra gaya. Aap ka apna status zyada
+         * bharosay laiq record hai -- inbox ki ginti alag se neeche hai.
+         */
+        rates: {
+          contacted: rate(contacted, total),
+          replied: rate(replied, contacted),
+          noReply: rate(status['No Reply'] || 0, contacted),
+        },
+      },
+    });
+  } catch (error) {
+    return fail(res, error);
+  }
+};
+
 const getStats = async (req, res) => {
   try {
     const [totalContacts, byStatusRaw, byCategoryRaw, byCityRaw, withEmail, readyToEmail] =
@@ -1456,7 +1598,7 @@ const exportContacts = async (req, res) => {
 
         doc.font('Helvetica').fontSize(6.5).fillColor('#94a3b8');
 
-        doc.text('www.xportyn.com   ·   info@xportyn.com   ·   +92 329 1475692', left, footerY, {
+        doc.text('www.xportyn.com   ·   adnan@xportyn.com   ·   +923476275532', left, footerY, {
           width: pageWidth,
           align: 'left',
           lineBreak: false,
@@ -1845,6 +1987,7 @@ module.exports = {
   getContactTemplate,
   getAllTemplates,
   getStats,
+  getOutreachReport,
   getUpcomingFollowUps,
   closeFollowUps,
   exportContacts,

@@ -316,14 +316,14 @@ const OUTREACH_STEPS = [
       "Best regards,\n" +
       "Adnan Hassan\n" +
       "Sales Manager, Xportyn\n" +
-      "+92 329 1475692 | info@xportyn.com | www.xportyn.com",
+      "+923476275532 | adnan@xportyn.com | www.xportyn.com",
     urdu:
       "Hi [Name], connect karne ka shukriya! Main Adnan hoon Xportyn se — hum Sialkot ki factory mein direct custom football kits aur training wear banate hain.\n\n" +
       "Main [Club] ka profile dekh raha tha aur jaanna chahta tha ke aap naye season ke liye teamwear sourcing kaise manage karte hain? Kya yeh aap manage karte hain, ya aapki team mein koi aur hai jisse mujhe baat karni chahiye?\n\n" +
       "Best regards,\n" +
       "Adnan Hassan\n" +
       "Sales Manager, Xportyn\n" +
-      "+92 329 1475692 | info@xportyn.com | www.xportyn.com",
+      "+923476275532 | adnan@xportyn.com | www.xportyn.com",
   },
   {
     key: "step3",

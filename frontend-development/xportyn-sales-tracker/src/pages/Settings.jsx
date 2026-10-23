@@ -59,7 +59,7 @@ const Settings = () => {
 {`Best regards,
 ${form.name || '[Your Name]'}
 ${form.title || '[Your Title]'}, Xportyn
-+92 329 1475692 | info@xportyn.com | www.xportyn.com`}
++923476275532 | adnan@xportyn.com | www.xportyn.com`}
           </pre>
         </div>
 

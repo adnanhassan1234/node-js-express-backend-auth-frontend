@@ -1412,7 +1412,7 @@ const exportContacts = async (req, res) => {
 
         doc.font('Helvetica').fontSize(6.5).fillColor('#94a3b8');
 
-        doc.text('www.xportyn.com   ·   info@xportyn.com   ·   +92 329 1475692', left, footerY, {
+        doc.text('www.xportyn.com   ·   adnan@xportyn.com   ·   +923476275532', left, footerY, {
           width: pageWidth,
           align: 'left',
           lineBreak: false,

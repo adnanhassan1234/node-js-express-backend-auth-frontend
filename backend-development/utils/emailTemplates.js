@@ -7,7 +7,7 @@
  * `renderTemplate()` in placeholders ko contact ke asal data se replace kar deta hai.
  */
 
-const SIGNATURE = `+92 329 1475692 | info@xportyn.com | www.xportyn.com`;
+const SIGNATURE = `+923476275532 | adnan@xportyn.com | www.xportyn.com`;
 
 /* ------------------------------------------------------------------ */
 /* Category-wise initial templates                                     */

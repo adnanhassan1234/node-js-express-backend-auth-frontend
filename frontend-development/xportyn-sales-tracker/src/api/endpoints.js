@@ -78,6 +78,9 @@ export const statsApi = {
   summary: () => client.get('/stats/summary'),
 
   // GET /api/stats/upcoming-followups?days=2  (ya ?from=&to= date range ke liye)
+  // GET /api/stats/outreach-report -- email outreach ki poori report
+  outreachReport: () => client.get('/stats/outreach-report'),
+
   upcomingFollowUps: (params = {}) =>
     client.get('/stats/upcoming-followups', {
       params: { days: 2, limit: 50, ...params },

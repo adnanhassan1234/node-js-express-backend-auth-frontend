@@ -24,6 +24,9 @@ router.get('/api/auth/me', authMiddleware, trackerAuthController.me);
 /* ------------------- STATS / DASHBOARD ------------------ */
 router.get('/api/stats/summary', authMiddleware, contactController.getStats);
 router.get('/api/stats/upcoming-followups', authMiddleware, contactController.getUpcomingFollowUps);
+
+// Email outreach ki poori report (status + tareekhon se bani hui)
+router.get('/api/stats/outreach-report', authMiddleware, contactController.getOutreachReport);
 router.post('/api/contacts/close-followups', authMiddleware, contactController.closeFollowUps);
 
 /* ---------------------- TEMPLATES ----------------------- */

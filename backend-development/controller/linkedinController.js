@@ -142,6 +142,37 @@ const buildBuyerQuery = (q = {}) => {
 const ONCE_PER_BUYER = new Set(['requestSent', 'accepted']);
 
 /**
+ * `accepted` kis WAQT ka likha jaye.
+ *
+ * Accept hamesha kuch din baad aata hai. Agar usay "aaj" likha jaye to har
+ * Monday naye hafte me 5-10 accepts aa jate hain jinki requests pichhle hafte
+ * gayi thin -- aur dono hafton ke number jhoote ho jate hain:
+ *
+ *   pichhla hafta -> 56 requests, 19 accepts   (accept rate kam dikhti hai)
+ *   naya hafta    -> 0 requests, 5 accepts     (is ka koi matlab hi nahi)
+ *
+ * Is liye accept usi din par likha jata hai jis din REQUEST gayi thi -- ek
+ * ghanta baad, taake activity ki tarteeb bhi theek rahe (pehle request, phir
+ * accept).
+ *
+ * Request ka koi record na ho to "abhi" hi rehta hai -- andaze par tareekh
+ * peechhe karna theek nahi.
+ */
+const acceptedAt = (buyer, fallback) => {
+  const req = (buyer.activity || []).find((a) => a.type === 'requestSent');
+  if (!req) return fallback;
+
+  const at = new Date(new Date(req.at).getTime() + 60 * 60 * 1000);
+
+  // Mustaqbil me na chala jaye (request raat ko late likhi gayi ho)
+  return at > fallback ? fallback : at;
+};
+
+/** Kis activity ka waqt kya hona chahiye */
+const activityTime = (buyer, type, fallback) =>
+  type === 'accepted' ? acceptedAt(buyer, fallback) : fallback;
+
+/**
  * Ye activity dobara likhni chahiye ya nahi.
  *
  * Pehle har cheez par sirf "aaj" ka guard tha. Us se ek asli kharabi hui:
@@ -453,7 +484,7 @@ const updateBuyer = async (req, res) => {
       // Stage aage barha to us qadam ki tareekh mehfooz kar lo
       const type = STAGE_ACTIVITY[buyer.stage];
       if (type && !skipActivity(buyer, type)) {
-        buyer.activity.push({ type, at: new Date() });
+        buyer.activity.push({ type, at: activityTime(buyer, type, new Date()) });
       }
 
       addImplied(buyer, buyer.stage);
@@ -514,7 +545,7 @@ const logActivity = async (req, res) => {
     const already = skipActivity(buyer, type);
 
     if (!already) {
-      buyer.activity.push({ type, at: new Date(), note: note || '' });
+      buyer.activity.push({ type, at: activityTime(buyer, type, new Date()), note: note || '' });
     }
 
     buyer.lastContactDate = new Date();
@@ -597,7 +628,7 @@ const bulkLogActivity = async (req, res) => {
       if (skipActivity(buyer, type)) {
         skipped += 1;
       } else {
-        buyer.activity.push({ type, at: now, note: note || '' });
+        buyer.activity.push({ type, at: activityTime(buyer, type, now), note: note || '' });
         logged += 1;
       }
 

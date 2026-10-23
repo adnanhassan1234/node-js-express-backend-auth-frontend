@@ -12,6 +12,7 @@ import Templates from './pages/Templates';
 import Settings from './pages/Settings';
 import LinkedIn from './pages/LinkedIn';
 import SocialFinder from './pages/SocialFinder';
+import EmailReport from './pages/EmailReport';
 
 /** Protected page ko Layout ke andar wrap karne ka shortcut */
 const Protected = ({ children }) => (
@@ -74,6 +75,15 @@ const App = () => (
       element={
         <Protected>
           <LinkedIn />
+        </Protected>
+      }
+    />
+
+    <Route
+      path="/email-report"
+      element={
+        <Protected>
+          <EmailReport />
         </Protected>
       }
     />
